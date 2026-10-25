@@ -57,7 +57,7 @@ jobs:
                   targetSdk 34
                   // minutes since 1970: always bigger than the previous build, so Android never sees it as a downgrade
                   versionCode System.currentTimeMillis().intdiv(60000L).intValue()
-                  versionName "53.0"
+                  versionName "54.0"
               }
               buildTypes {
                   debug { signingConfig signingConfigs.vadlan }
@@ -105,6 +105,13 @@ jobs:
                           <category android:name="android.intent.category.DEFAULT" />
                       </intent-filter>
                   </activity>
+                  <activity
+                      android:name=".ClipGrabActivity"
+                      android:exported="false"
+                      android:excludeFromRecents="true"
+                      android:noHistory="true"
+                      android:taskAffinity=""
+                      android:theme="@android:style/Theme.Translucent.NoTitleBar" />
                   <service
                       android:name=".VadTile"
                       android:enabled="false"
@@ -153,18 +160,11 @@ jobs:
           cat > app/src/main/res/drawable/ic_bg.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <vector xmlns:android="http://schemas.android.com/apk/res/android"
-              xmlns:aapt="http://schemas.android.com/aapt"
               android:width="108dp" android:height="108dp"
               android:viewportWidth="108" android:viewportHeight="108">
-              <path android:pathData="M0,0h108v108h-108z">
-                  <aapt:attr name="android:fillColor">
-                      <gradient android:startX="0" android:startY="0" android:endX="108" android:endY="108" android:type="linear">
-                          <item android:offset="0" android:color="#FFFFFFFF"/>
-                          <item android:offset="1" android:color="#FFD5D9E6"/>
-                      </gradient>
-                  </aapt:attr>
-              </path>
+              <path android:fillColor="#00000000" android:pathData="M0,0h108v108h-108z"/>
           </vector>
+
           EOF
 
           cat > app/src/main/res/drawable/ic_fg.xml <<'EOF'
@@ -173,34 +173,37 @@ jobs:
               xmlns:aapt="http://schemas.android.com/aapt"
               android:width="108dp" android:height="108dp"
               android:viewportWidth="108" android:viewportHeight="108">
-              <path android:pathData="M32.2,56.2 a23,23 0 1,0 46,0 a23,23 0 1,0 -46,0" android:strokeColor="#FF000000" android:strokeAlpha="0.2" android:strokeWidth="16"/>
-              <path android:fillColor="#FFFBBC00" android:pathData="M45.98,24.06 A31,31 0 0 1 62.23,24.11 L57.98,39.54 A15,15 0 0 0 50.12,39.51 Z"/>
-              <path android:fillColor="#FFFC9A00" android:pathData="M62.02,24.06 A31,31 0 0 1 76.07,32.23 L64.68,43.47 A15,15 0 0 0 57.88,39.51 Z"/>
-              <path android:fillColor="#FFFF5608" android:pathData="M75.92,32.08 A31,31 0 0 1 84,46.19 L68.52,50.22 A15,15 0 0 0 64.61,43.39 Z"/>
-              <path android:fillColor="#FFFF2813" android:pathData="M83.94,45.98 A31,31 0 0 1 83.89,62.23 L68.46,57.98 A15,15 0 0 0 68.49,50.12 Z"/>
-              <path android:fillColor="#FFA41A4A" android:pathData="M83.94,62.02 A31,31 0 0 1 75.77,76.07 L64.53,64.68 A15,15 0 0 0 68.49,57.88 Z"/>
-              <path android:fillColor="#FF8600B2" android:pathData="M75.92,75.92 A31,31 0 0 1 61.81,84 L57.78,68.52 A15,15 0 0 0 64.61,64.61 Z"/>
-              <path android:fillColor="#FF3D00A5" android:pathData="M62.02,83.94 A31,31 0 0 1 45.77,83.89 L50.02,68.46 A15,15 0 0 0 57.88,68.49 Z"/>
-              <path android:fillColor="#FF0044FF" android:pathData="M45.98,83.94 A31,31 0 0 1 31.93,75.77 L43.32,64.53 A15,15 0 0 0 50.12,68.49 Z"/>
-              <path android:fillColor="#FF0090CC" android:pathData="M32.08,75.92 A31,31 0 0 1 24,61.81 L39.48,57.78 A15,15 0 0 0 43.39,64.61 Z"/>
-              <path android:fillColor="#FF69B030" android:pathData="M24.06,62.02 A31,31 0 0 1 24.11,45.77 L39.54,50.02 A15,15 0 0 0 39.51,57.88 Z"/>
-              <path android:fillColor="#FFD3EA2B" android:pathData="M24.06,45.98 A31,31 0 0 1 32.23,31.93 L43.47,43.32 A15,15 0 0 0 39.51,50.12 Z"/>
-              <path android:fillColor="#FFFFFF33" android:pathData="M32.08,32.08 A31,31 0 0 1 46.19,24 L50.22,39.48 A15,15 0 0 0 43.39,43.39 Z"/>
-              <path android:pathData="M25.3,54 a28.7,28.7 0 1,0 57.4,0 a28.7,28.7 0 1,0 -57.4,0" android:strokeColor="#FF000000" android:strokeAlpha="0.27" android:strokeWidth="4.6"/>
-              <path android:pathData="M37,54 a17,17 0 1,0 34,0 a17,17 0 1,0 -34,0" android:strokeColor="#FF000000" android:strokeAlpha="0.22" android:strokeWidth="4"/>
-              <path android:pathData="M31,54 a23,23 0 1,0 46,0 a23,23 0 1,0 -46,0" android:strokeColor="#FFFFFFFF" android:strokeAlpha="0.25" android:strokeWidth="3.52"/>
-              <path android:pathData="M31,54 a23,23 0 1,0 46,0 a23,23 0 1,0 -46,0" android:strokeWidth="16">
-                  <aapt:attr name="android:strokeColor">
-                      <gradient android:startX="23" android:startY="23" android:endX="85" android:endY="85" android:type="linear">
-                          <item android:offset="0" android:color="#66FFFFFF"/>
-                          <item android:offset="0.4" android:color="#00FFFFFF"/>
-                          <item android:offset="0.6" android:color="#00000000"/>
-                          <item android:offset="1" android:color="#66000000"/>
+              <path android:fillType="evenOdd"
+                  android:pathData="M21,54 a33,33 0 1,0 66,0 a33,33 0 1,0 -66,0 M38,54 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0">
+                  <aapt:attr name="android:fillColor">
+                      <gradient android:type="sweep" android:centerX="54" android:centerY="54">
+                          <item android:color="#FFFBBC00" android:offset="0"/>
+                          <item android:color="#FFFF2813" android:offset="0.17"/>
+                          <item android:color="#FFA41A4A" android:offset="0.33"/>
+                          <item android:color="#FF0044FF" android:offset="0.5"/>
+                          <item android:color="#FF0090CC" android:offset="0.67"/>
+                          <item android:color="#FF69B030" android:offset="0.83"/>
+                          <item android:color="#FFFBBC00" android:offset="1"/>
                       </gradient>
                   </aapt:attr>
               </path>
-              <path android:pathData="M23.4,54 a30.6,30.6 0 1,0 61.2,0 a30.6,30.6 0 1,0 -61.2,0" android:strokeColor="#FFFFFFFF" android:strokeAlpha="0.33" android:strokeWidth="0.8"/>
+              <path android:fillType="evenOdd"
+                  android:pathData="M21,54 a33,33 0 1,0 66,0 a33,33 0 1,0 -66,0 M38,54 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0">
+                  <aapt:attr name="android:fillColor">
+                      <gradient android:type="linear" android:startX="30" android:startY="20" android:endX="78" android:endY="88">
+                          <item android:color="#66FFFFFF" android:offset="0"/>
+                          <item android:color="#00FFFFFF" android:offset="0.45"/>
+                          <item android:color="#00000000" android:offset="0.55"/>
+                          <item android:color="#77000000" android:offset="1"/>
+                      </gradient>
+                  </aapt:attr>
+              </path>
+              <path android:strokeColor="#88FFFFFF" android:strokeWidth="1.2"
+                  android:pathData="M21,54 a33,33 0 1,0 66,0 a33,33 0 1,0 -66,0"/>
+              <path android:strokeColor="#88000000" android:strokeWidth="1.2"
+                  android:pathData="M38,54 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0"/>
           </vector>
+
           EOF
 
           cat > app/src/main/res/drawable/ic_mono.xml <<'EOF'
@@ -282,7 +285,7 @@ jobs:
           cat > app/src/main/res/xml/tile_a11y.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-              android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewClicked"
+              android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewClicked|typeViewLongClicked"
               android:accessibilityFeedbackType="feedbackGeneric"
               android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds"
               android:canRetrieveWindowContent="true"
@@ -563,6 +566,7 @@ jobs:
 
            @Override
            public void onAccessibilityEvent(AccessibilityEvent e) {
+            try { Vault.onA11y(this, e); } catch (Throwable ex) { }
             if (recPkg == null || e.getEventType() != AccessibilityEvent.TYPE_VIEW_CLICKED) return;
             if (!recPkg.equals(String.valueOf(e.getPackageName()))) return;
             AccessibilityNodeInfo n = e.getSource();
@@ -976,6 +980,7 @@ jobs:
 
            static class Act {
             String pkg, type, id, label, name = "";   // name = the custom name shown in the bubble list; type: "sc" shortcut, "cmp" screen, "rcv" receiver, "svc" service, "tile" quick settings tile, "macro" recorded taps inside the app (steps in id), "app" open the app (id: "popup" or "full")
+            String fid = "";                 // stable id of a folder (used by pins)
             long ts;                       // last time this action was saved / chosen
            }
 
@@ -992,6 +997,7 @@ jobs:
               x.id = o.optString("id", "");
               x.label = o.optString("label", "");
               x.name = o.optString("name", "");
+              x.fid = o.optString("fid", "");
               x.ts = o.optLong("ts", 0);
               a[i] = x;
              }
@@ -1011,6 +1017,7 @@ jobs:
                o.put("id", x.id == null ? "" : x.id);
                o.put("label", x.label == null ? "" : x.label);
                o.put("name", x.name == null ? "" : x.name);
+               o.put("fid", x.fid == null ? "" : x.fid);
                o.put("ts", x.ts);
               }
               arr.put(o);
@@ -1353,6 +1360,24 @@ jobs:
            }
 
            
+           static String newFid() { return "f" + System.currentTimeMillis() + "x" + (int) (Math.random() * 100000); }
+
+           // pins: folder id -> column (2 to 5); a folder without a pin has no entry
+           static JSONObject pins(SharedPreferences sp) {
+            try { return new JSONObject(sp.getString("pins", "{}")); } catch (Exception e) { return new JSONObject(); }
+           }
+
+           static int pinCol(SharedPreferences sp, Act f) {
+            if (f == null || f.fid == null || f.fid.isEmpty()) return 0;
+            return pins(sp).optInt(f.fid, 0);
+           }
+
+           static void setPin(SharedPreferences sp, String fid, int col) {
+            JSONObject o = pins(sp);
+            try { if (col <= 0) o.remove(fid); else o.put(fid, col); } catch (Exception e) { }
+            sp.edit().putString("pins", o.toString()).apply();
+           }
+
            static boolean isFolder(Act x) { return x != null && "folder".equals(x.type); }
 
            static Act fromJson(JSONObject o) {
@@ -1363,6 +1388,7 @@ jobs:
             x.id = o.optString("id", o.has("win") ? o.optString("win", "full") : "");
             x.label = o.optString("label", "");
             x.name = o.optString("name", "");
+              x.fid = o.optString("fid", "");
             x.ts = o.optLong("ts", 0);
             return x;
            }
@@ -1374,6 +1400,7 @@ jobs:
             o.put("id", x.id == null ? "" : x.id);
             o.put("label", x.label == null ? "" : x.label);
             o.put("name", x.name == null ? "" : x.name);
+               o.put("fid", x.fid == null ? "" : x.fid);
             o.put("ts", x.ts);
             return o;
            }
@@ -1469,6 +1496,1678 @@ jobs:
           }
           EOF
 
+          cat > app/src/main/java/com/mylauncher/Vault.java <<'EOF'
+          package com.mylauncher;
+
+          import android.content.ClipData;
+          import android.content.ClipDescription;
+          import android.content.ClipboardManager;
+          import android.content.Context;
+          import android.content.SharedPreferences;
+          import android.os.SystemClock;
+          import android.view.accessibility.AccessibilityEvent;
+          import android.view.accessibility.AccessibilityNodeInfo;
+          import java.io.File;
+          import java.io.FileInputStream;
+          import java.io.FileOutputStream;
+          import java.util.ArrayList;
+          import java.util.List;
+          import java.util.Set;
+          import java.util.concurrent.ExecutorService;
+          import java.util.concurrent.Executors;
+          import org.json.JSONArray;
+          import org.json.JSONObject;
+
+          // the built-in clipboard history of the launcher ("Vault"): up to 700 texts, numbers and links
+          public class Vault {
+           static final int MAX = 700;
+           static final int MAX_LEN = 20000;
+           static final int K_TEXT = 0, K_LINK = 1, K_NUM = 2;
+
+           static class Item {
+            long id;
+            String text;
+            long time;
+            boolean pin;
+            int kind;
+           }
+
+           private static final ArrayList<Item> items = new ArrayList<>();   // newest first
+           private static boolean loaded = false;
+           private static long seq = 0;
+           private static final ExecutorService io = Executors.newSingleThreadExecutor();
+
+           // what the vault itself put on the clipboard (so it is not saved again)
+           static volatile String selfCopy = "";
+           static volatile long selfAt = 0;
+
+           static boolean enabled(Context c) {
+            return c.getSharedPreferences("l", 0).getBoolean("vault_on", false);
+           }
+
+           static int kindOf(String t) {
+            String s = t.trim();
+            if (s.indexOf(' ') < 0 && s.indexOf('\n') < 0) {
+             String l = s.toLowerCase();
+             if (l.startsWith("http://") || l.startsWith("https://") || l.startsWith("www.") || l.startsWith("ftp://")) return K_LINK;
+             try {
+              if (android.util.Patterns.WEB_URL.matcher(s).matches()) return K_LINK;
+             } catch (Throwable e) { }
+            }
+            int digits = 0;
+            boolean ok = true;
+            for (int i = 0; i < s.length() && ok; i++) {
+             char c = s.charAt(i);
+             if (Character.isDigit(c)) digits++;
+             else if ("+-()., /\u066B\u066C\u060C".indexOf(c) < 0) ok = false;
+            }
+            if (ok && digits >= 1) return K_NUM;
+            return K_TEXT;
+           }
+
+           static synchronized void load(Context c) {
+            if (loaded) return;
+            loaded = true;
+            try {
+             File f = new File(c.getApplicationContext().getFilesDir(), "vault.json");
+             if (!f.exists()) return;
+             byte[] b = new byte[(int) f.length()];
+             FileInputStream in = new FileInputStream(f);
+             int off = 0;
+             while (off < b.length) {
+              int r = in.read(b, off, b.length - off);
+              if (r < 0) break;
+              off += r;
+             }
+             in.close();
+             JSONArray a = new JSONArray(new String(b, 0, off, "UTF-8"));
+             for (int i = 0; i < a.length(); i++) {
+              JSONObject o = a.getJSONObject(i);
+              Item it = new Item();
+              it.id = o.optLong("i");
+              it.text = o.optString("t");
+              it.time = o.optLong("m");
+              it.pin = o.optBoolean("p");
+              if (it.text == null || it.text.isEmpty()) continue;
+              it.kind = kindOf(it.text);
+              items.add(it);
+              seq = Math.max(seq, it.id);
+             }
+            } catch (Throwable e) { }
+           }
+
+           private static void saveAsync(Context c) {
+            final File dir = c.getApplicationContext().getFilesDir();
+            final String json;
+            try {
+             JSONArray a = new JSONArray();
+             for (Item it : items) {
+              JSONObject o = new JSONObject();
+              o.put("i", it.id);
+              o.put("t", it.text);
+              o.put("m", it.time);
+              o.put("p", it.pin);
+              a.put(o);
+             }
+             json = a.toString();
+            } catch (Throwable e) { return; }
+            io.execute(() -> {
+             try {
+              File tmp = new File(dir, "vault.json.tmp");
+              FileOutputStream out = new FileOutputStream(tmp);
+              out.write(json.getBytes("UTF-8"));
+              out.flush();
+              out.close();
+              File dst = new File(dir, "vault.json");
+              if (!tmp.renameTo(dst)) {
+               dst.delete();
+               tmp.renameTo(dst);
+              }
+             } catch (Throwable e) { }
+            });
+           }
+
+           static synchronized List<Item> snapshot() {
+            return new ArrayList<>(items);
+           }
+
+           // a new text goes to the top; a text that is already inside is moved to the top
+           static synchronized boolean add(Context c, String raw) {
+            load(c);
+            if (raw == null) return false;
+            String t = raw.trim();
+            if (t.isEmpty()) return false;
+            if (t.length() > MAX_LEN) t = t.substring(0, MAX_LEN);
+            long now = System.currentTimeMillis();
+            Item found = null;
+            for (Item it : items) {
+             if (it.text.equals(t)) { found = it; break; }
+            }
+            if (found != null) {
+             items.remove(found);
+             found.time = now;
+             items.add(0, found);
+            } else {
+             Item n = new Item();
+             seq = Math.max(seq + 1, now);
+             n.id = seq;
+             n.text = t;
+             n.time = now;
+             n.kind = kindOf(t);
+             items.add(0, n);
+            }
+            // over the limit: the oldest texts that are not pinned go first
+            while (items.size() > MAX) {
+             int rm = -1;
+             for (int i = items.size() - 1; i >= 0; i--) {
+              if (!items.get(i).pin) { rm = i; break; }
+             }
+             if (rm < 0) rm = items.size() - 1;
+             items.remove(rm);
+            }
+            saveAsync(c);
+            return true;
+           }
+
+           static synchronized void delete(Context c, Set<Long> ids) {
+            load(c);
+            ArrayList<Item> keep = new ArrayList<>();
+            for (Item it : items) if (!ids.contains(it.id)) keep.add(it);
+            items.clear();
+            items.addAll(keep);
+            saveAsync(c);
+           }
+
+           static synchronized void togglePin(Context c, long id) {
+            load(c);
+            for (Item it : items) {
+             if (it.id == id) { it.pin = !it.pin; break; }
+            }
+            saveAsync(c);
+           }
+
+           static synchronized int clearUnpinned(Context c) {
+            load(c);
+            int n = 0;
+            ArrayList<Item> keep = new ArrayList<>();
+            for (Item it : items) {
+             if (it.pin) keep.add(it); else n++;
+            }
+            items.clear();
+            items.addAll(keep);
+            saveAsync(c);
+            return n;
+           }
+
+           // reads the clipboard: null = the system did not allow it, "" = nothing to keep (not text / sensitive)
+           static String readClip(Context c) {
+            try {
+             ClipboardManager cm = (ClipboardManager) c.getSystemService(Context.CLIPBOARD_SERVICE);
+             ClipData d = cm.getPrimaryClip();
+             if (d == null || d.getItemCount() == 0) return null;
+             ClipDescription ds = d.getDescription();
+             if (ds != null) {
+              try {
+               if (ds.getExtras() != null && ds.getExtras().getBoolean("android.content.extra.IS_SENSITIVE", false)) return "";
+              } catch (Throwable e) { }
+              if (!ds.hasMimeType("text/*")) return "";
+             }
+             CharSequence cs = d.getItemAt(0).coerceToText(c);
+             return cs == null ? null : cs.toString();
+            } catch (Throwable e) {
+             return null;
+            }
+           }
+
+           // saves a text and plays the little magnet over the bubble
+           static void capture(Context c, String t) {
+            if (t == null) return;
+            String s = t.trim();
+            if (s.isEmpty()) return;
+            if (s.equals(selfCopy) && SystemClock.uptimeMillis() - selfAt < 4000) return;
+            if (add(c, s)) MockBubbleService.magnet();
+           }
+
+           // a long touch (about one second) on a text or a link inside any app
+           static void onA11y(Context c, AccessibilityEvent e) {
+            if (e == null || e.getEventType() != AccessibilityEvent.TYPE_VIEW_LONG_CLICKED) return;
+            SharedPreferences sp = c.getSharedPreferences("l", 0);
+            if (!sp.getBoolean("vault_on", false) || !sp.getBoolean("vault_lp", true)) return;
+            String pkg = String.valueOf(e.getPackageName()).toLowerCase();
+            if (pkg.equals(c.getPackageName().toLowerCase()) || pkg.contains("launcher") || pkg.contains("systemui")
+              || pkg.contains(".home") || pkg.equals("android")) return;
+            String t = null;
+            try {
+             AccessibilityNodeInfo n = e.getSource();
+             if (n != null) {
+              CharSequence cs = n.getText();
+              if (cs != null) t = cs.toString();
+             }
+            } catch (Throwable ex) { }
+            if (t == null || t.trim().isEmpty()) {
+             try {
+              List<CharSequence> l = e.getText();
+              if (l != null && !l.isEmpty()) {
+               StringBuilder sb = new StringBuilder();
+               for (CharSequence cs : l) {
+                if (cs == null) continue;
+                if (sb.length() > 0) sb.append('\n');
+                sb.append(cs);
+               }
+               t = sb.toString();
+              }
+             } catch (Throwable ex) { }
+            }
+            if (t == null) return;
+            t = t.trim();
+            if (t.length() < 2 || t.length() > 5000) return;
+            capture(c, t);
+           }
+          }
+          EOF
+
+          cat > app/src/main/java/com/mylauncher/VaultUI.java <<'EOF'
+          package com.mylauncher;
+
+          import android.animation.Animator;
+          import android.animation.AnimatorListenerAdapter;
+          import android.animation.ValueAnimator;
+          import android.content.ClipData;
+          import android.content.ClipboardManager;
+          import android.content.Context;
+          import android.content.SharedPreferences;
+          import android.content.res.ColorStateList;
+          import android.graphics.Canvas;
+          import android.graphics.Color;
+          import android.graphics.Paint;
+          import android.graphics.Path;
+          import android.graphics.PixelFormat;
+          import android.graphics.RectF;
+          import android.graphics.SweepGradient;
+          import android.graphics.Typeface;
+          import android.graphics.drawable.ColorDrawable;
+          import android.graphics.drawable.GradientDrawable;
+          import android.os.Handler;
+          import android.os.Looper;
+          import android.os.SystemClock;
+          import android.text.Editable;
+          import android.text.InputType;
+          import android.text.Layout;
+          import android.text.SpannableString;
+          import android.text.Spanned;
+          import android.text.TextUtils;
+          import android.text.TextWatcher;
+          import android.text.style.BackgroundColorSpan;
+          import android.view.Gravity;
+          import android.view.HapticFeedbackConstants;
+          import android.view.KeyEvent;
+          import android.view.MotionEvent;
+          import android.view.View;
+          import android.view.ViewConfiguration;
+          import android.view.ViewGroup;
+          import android.view.WindowManager;
+          import android.view.animation.DecelerateInterpolator;
+          import android.view.animation.OvershootInterpolator;
+          import android.view.inputmethod.EditorInfo;
+          import android.view.inputmethod.InputMethodManager;
+          import android.widget.BaseAdapter;
+          import android.widget.CheckBox;
+          import android.widget.EditText;
+          import android.widget.FrameLayout;
+          import android.widget.LinearLayout;
+          import android.widget.ListView;
+          import android.widget.ScrollView;
+          import android.widget.SeekBar;
+          import android.widget.TextView;
+          import android.widget.Toast;
+          import java.util.ArrayList;
+          import java.util.HashSet;
+          import java.util.List;
+          import java.util.Set;
+          import java.util.regex.Matcher;
+          import java.util.regex.Pattern;
+
+          // the floating window of the Vault (the launcher's own clipboard history) and the small magnet that confirms a save
+          public class VaultUI {
+
+           // ================= the magnet that shows over the bubble for a moment =================
+           static class MagnetView extends View {
+            private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private final Path path = new Path();
+            private final RectF oval = new RectF();
+            private final OvershootInterpolator ov = new OvershootInterpolator(2.2f);
+            private float prog = 0f;
+            private static final int[] COLS = {0xFFFBBC00, 0xFFFC9A00, 0xFFFF5608, 0xFFFF2813, 0xFFA41A4A, 0xFF8600B2,
+              0xFF3D00A5, 0xFF0044FF, 0xFF0090CC, 0xFF69B030, 0xFFD3EA2B, 0xFFFFFF33, 0xFFFBBC00};
+
+            MagnetView(Context c) { super(c); }
+
+            void start(final Runnable end) {
+             ValueAnimator an = ValueAnimator.ofFloat(0f, 1f);
+             an.setDuration(950);
+             an.addUpdateListener(a -> { prog = (Float) a.getAnimatedValue(); invalidate(); });
+             an.addListener(new AnimatorListenerAdapter() {
+              @Override
+              public void onAnimationEnd(Animator x) { if (end != null) end.run(); }
+             });
+             an.start();
+            }
+
+            @Override
+            protected void onDraw(Canvas c) {
+             float w = getWidth();
+             if (w <= 0) return;
+             float cx = w / 2f, cy = w / 2f;
+             float pop = prog < 0.3f ? ov.getInterpolation(prog / 0.3f) : 1f;
+             float fade = prog > 0.72f ? 1f - (prog - 0.72f) / 0.28f : 1f;
+             float pulse = prog >= 0.3f ? 1f + 0.06f * (float) Math.sin((prog - 0.3f) * 18f) : 1f;
+             int a255 = (int) (255 * Math.max(0f, Math.min(1f, fade)));
+             float sc = Math.max(0.01f, pop * pulse);
+             c.save();
+             c.scale(sc, sc, cx, cy);
+
+             // soft white disc inside the ring, so the magnet is easy to see
+             p.setShader(null);
+             p.setStyle(Paint.Style.FILL);
+             p.setColor(0xFFFFFFFF);
+             p.setAlpha((int) (a255 * 0.93f));
+             c.drawCircle(cx, cy, w * 0.28f, p);
+
+             // the horseshoe: an arc with two legs, painted with the twelve colours of the bubble
+             float R = w * 0.125f;
+             float st = w * 0.085f;
+             float legL = w * 0.09f;
+             float totalH = legL + R + st / 2f;
+             float top = cy - totalH / 2f;
+             float ay = top + legL;
+             oval.set(cx - R, ay - R, cx + R, ay + R);
+             path.reset();
+             path.moveTo(cx - R, top);
+             path.lineTo(cx - R, ay);
+             path.arcTo(oval, 180f, -180f);
+             path.lineTo(cx + R, top);
+             p.setStyle(Paint.Style.STROKE);
+             p.setStrokeCap(Paint.Cap.BUTT);
+             p.setStrokeJoin(Paint.Join.ROUND);
+             p.setStrokeWidth(st);
+             p.setShader(new SweepGradient(cx, ay, COLS, null));
+             p.setAlpha(a255);
+             c.drawPath(path, p);
+             p.setShader(null);
+             // light line along the upper left edge
+             c.save();
+             c.translate(-st * 0.12f, -st * 0.12f);
+             p.setStrokeWidth(st * 0.2f);
+             p.setColor(0xFFFFFFFF);
+             p.setAlpha((int) (a255 * 0.4f));
+             c.drawPath(path, p);
+             c.restore();
+
+             // the two silver tips
+             p.setStyle(Paint.Style.FILL);
+             float tipH = st * 0.85f;
+             for (int s = -1; s <= 1; s += 2) {
+              float lx = cx + s * R;
+              p.setColor(0xFFF2F4F8);
+              p.setAlpha(a255);
+              c.drawRect(lx - st / 2f, top, lx + st / 2f, top + tipH, p);
+              p.setColor(0xFF9AA3B5);
+              p.setAlpha(a255);
+              c.drawRect(lx - st / 2f, top + tipH - st * 0.14f, lx + st / 2f, top + tipH, p);
+             }
+
+             // little dots that are pulled into the magnet
+             for (int i = 0; i < 6; i++) {
+              float t = (prog * 1.6f + i * 0.17f) % 1f;
+              float side = (i % 2 == 0) ? -1f : 1f;
+              float sx = cx + side * w * (0.25f + 0.04f * (i / 2));
+              float sy = top - w * 0.16f - w * 0.02f * (i / 2);
+              float tx = cx;
+              float ty = top + tipH * 0.4f;
+              float x = sx + (tx - sx) * t;
+              float y = sy + (ty - sy) * t;
+              p.setColor(COLS[(i * 2) % 12]);
+              p.setAlpha((int) (a255 * Math.sin(Math.PI * t)));
+              c.drawCircle(x, y, w * 0.018f, p);
+             }
+             c.restore();
+            }
+           }
+
+           // ================= the window =================
+           private static final int[] ACC = {0xFF78909C, 0xFF2962FF, 0xFF1A237E, 0xFFAB47BC, 0xFF43A047};
+           private static final int MATCH = ViewGroup.LayoutParams.MATCH_PARENT;
+           private static final int WRAP = ViewGroup.LayoutParams.WRAP_CONTENT;
+           private static final int P_MAIN = 0, P_DETAIL = 1, P_SEARCH = 2, P_SET = 3;
+           private static final String DG = "0-9\\u0660-\\u0669\\u06F0-\\u06F9";
+           // links, e-mail addresses and phone numbers inside a text
+           private static final Pattern TOK = Pattern.compile("(?:https?://|www\\.)[^\\s]+|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}|\\+?["
+             + DG + "][" + DG + " ()\\-.]{3,}[" + DG + "]");
+           private static Typeface faTf;
+           private static boolean faTfTried;
+
+           private final Context ctx;
+           private final WindowManager wm;
+           private final SharedPreferences sp;
+           private final Handler h = new Handler(Looper.getMainLooper());
+           private final boolean fa;
+           private final int bx, by, bsize, sw, sh;
+           private final float dens;
+           private final Runnable onClosed, onOutside;
+
+           private Root root;
+           private WindowManager.LayoutParams lp;
+           private boolean closing = false, focusable = false;
+           private int kbY = 0, kbH = 0;
+           private int page = P_MAIN;
+           private int accent = ACC[1];
+           private int alphaPct = 100;
+           private LinearLayout header, footer, listPane, searchBar;
+           private FrameLayout body, detailHolder, menuLayer;
+           private EditText searchEt;
+           private ListView listView;
+           private TextView emptyTv, countTv;
+           private RowAdapter adapter;
+           private final List<Vault.Item> shown = new ArrayList<>();
+           private final Set<Long> sel = new HashSet<>();
+           private boolean onlyPinned = false;
+           private String query = "";
+           private Vault.Item cur;
+
+           VaultUI(Context c, WindowManager w, SharedPreferences s, int bubbleX, int bubbleY, int bubbleSize,
+             Runnable closed, Runnable outside) {
+            ctx = c;
+            wm = w;
+            sp = s;
+            fa = s.getString("lang", "fa").equals("fa");
+            bx = bubbleX;
+            by = bubbleY;
+            bsize = bubbleSize;
+            onClosed = closed;
+            onOutside = outside;
+            dens = c.getResources().getDisplayMetrics().density;
+            sw = c.getResources().getDisplayMetrics().widthPixels;
+            sh = c.getResources().getDisplayMetrics().heightPixels;
+           }
+
+           // ---------- small helpers ----------
+           private int dp(float v) { return Math.round(v * dens); }
+
+           private String t(String f, String e) { return fa ? f : e; }
+
+           private int clamp(int v, int lo, int hi) { return Math.max(lo, Math.min(hi, v)); }
+
+           // numbers written with Persian digits when the language is Persian
+           private String fd(long n) {
+            String s = String.valueOf(n);
+            if (!fa) return s;
+            StringBuilder b = new StringBuilder();
+            for (int i = 0; i < s.length(); i++) {
+             char ch = s.charAt(i);
+             if (ch >= '0' && ch <= '9') b.append((char) ('\u06F0' + (ch - '0'))); else b.append(ch);
+            }
+            return b.toString();
+           }
+
+           private GradientDrawable rr(int color, float rdp) {
+            GradientDrawable g = new GradientDrawable();
+            g.setColor(color);
+            g.setCornerRadius(dp(rdp));
+            return g;
+           }
+
+           private GradientDrawable oval(int color) {
+            GradientDrawable g = new GradientDrawable();
+            g.setShape(GradientDrawable.OVAL);
+            g.setColor(color);
+            return g;
+           }
+
+           private int cardColor() { return Color.argb(alphaPct * 255 / 100, 255, 255, 255); }
+
+           private int panelColor() { return Color.argb(alphaPct * 255 / 100, 245, 247, 252); }
+
+           private int tint(int c, int a) { return (c & 0x00FFFFFF) | (a << 24); }
+
+           private Typeface faFont() {
+            if (!faTfTried) {
+             faTfTried = true;
+             try { faTf = Typeface.createFromAsset(ctx.getAssets(), "fonts/fa/Vazirmatn-VF.ttf"); } catch (Throwable e) { faTf = null; }
+            }
+            return faTf;
+           }
+
+           private TextView tv(String s, float sz, int color, boolean bold) {
+            TextView x = new TextView(ctx);
+            x.setText(s);
+            x.setTextSize(sz);
+            x.setTextColor(color);
+            Typeface f = fa ? faFont() : null;
+            if (f != null) x.setTypeface(f, bold ? Typeface.BOLD : Typeface.NORMAL);
+            else if (bold) x.setTypeface(Typeface.DEFAULT_BOLD);
+            return x;
+           }
+
+           private LinearLayout.LayoutParams lpm(int w, int hh, float wt) {
+            return new LinearLayout.LayoutParams(w, hh, wt);
+           }
+
+           private TextView circleBtn(String g, int bg, int fg, int size, View.OnClickListener c) {
+            TextView b = tv(g, 16, fg, true);
+            b.setGravity(Gravity.CENTER);
+            if (bg != 0) b.setBackground(oval(bg));
+            b.setOnClickListener(c);
+            LinearLayout.LayoutParams p = lpm(dp(size), dp(size), 0);
+            p.setMargins(dp(3), 0, dp(3), 0);
+            b.setLayoutParams(p);
+            return b;
+           }
+
+           private TextView pill(String s, boolean on, View.OnClickListener c) {
+            TextView b = tv(s, 12.5f, on ? 0xFFFFFFFF : 0xFF2A2F4A, true);
+            b.setGravity(Gravity.CENTER);
+            b.setPadding(dp(13), dp(8), dp(13), dp(8));
+            b.setBackground(rr(on ? accent : 0xFFEEF1F8, 20));
+            b.setOnClickListener(c);
+            LinearLayout.LayoutParams p = lpm(WRAP, WRAP, 0);
+            p.setMargins(dp(3), 0, dp(3), 0);
+            b.setLayoutParams(p);
+            return b;
+           }
+
+           private String ago(long tm) {
+            long d = Math.max(0, System.currentTimeMillis() - tm) / 1000;
+            if (d < 45) return fa ? "هم‌اکنون" : "just now";
+            long m = Math.max(1, d / 60);
+            if (d < 3600) return fa ? fd(m) + " دقیقه پیش" : m + " min ago";
+            long hr = d / 3600;
+            if (hr < 24) return fa ? fd(hr) + " ساعت پیش" : hr + " h ago";
+            long dd = hr / 24;
+            if (dd == 1) return fa ? "دیروز" : "yesterday";
+            return fa ? fd(dd) + " روز پیش" : dd + " days ago";
+           }
+
+           private String preview(String s, int max) {
+            String x = s.replaceAll("\\s+", " ").trim();
+            return x.length() > max ? x.substring(0, max) : x;
+           }
+
+           private void upd() {
+            try { if (root != null) wm.updateViewLayout(root, lp); } catch (Throwable e) { }
+           }
+
+           // ---------- the root view ----------
+           private class Root extends FrameLayout {
+            Root(Context c) { super(c); }
+
+            @Override
+            public boolean dispatchTouchEvent(MotionEvent ev) {
+             if (ev.getAction() == MotionEvent.ACTION_OUTSIDE) {
+              if (onOutside != null) onOutside.run();
+              dismiss(true);
+              return true;
+             }
+             return super.dispatchTouchEvent(ev);
+            }
+
+            @Override
+            public boolean dispatchKeyEvent(KeyEvent ev) {
+             if (ev.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+              if (ev.getAction() == KeyEvent.ACTION_UP) back();
+              return true;
+             }
+             return super.dispatchKeyEvent(ev);
+            }
+           }
+
+           // ---------- show / close ----------
+           void show() {
+            Vault.load(ctx);
+            accent = ACC[clamp(sp.getInt("vault_color", 1), 0, 4)];
+            alphaPct = clamp(sp.getInt("vault_alpha", 100), 30, 100);
+            int wdp = sp.getInt("vault_w", 0), hdp = sp.getInt("vault_h", 0);
+            int w = wdp > 0 ? dp(wdp) : Math.min(sw - dp(24), dp(360));
+            int hh = hdp > 0 ? dp(hdp) : Math.min((int) (sh * 0.62f), dp(540));
+            w = clamp(w, dp(240), sw - dp(8));
+            hh = clamp(hh, dp(260), sh - dp(40));
+            lp = new WindowManager.LayoutParams(w, hh, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+              WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+              PixelFormat.TRANSLUCENT);
+            lp.gravity = Gravity.TOP | Gravity.LEFT;
+            place(w, hh);
+            build();
+            wm.addView(root, lp);
+            root.setAlpha(0f);
+            root.setScaleX(0.92f);
+            root.setScaleY(0.92f);
+            root.setPivotX(w / 2f);
+            root.setPivotY(hh);
+            root.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(170).setInterpolator(new DecelerateInterpolator()).start();
+           }
+
+           private void place(int w, int hh) {
+            int type = sp.getInt("vault_type", 0);
+            int margin = dp(8);
+            int x, y;
+            if (type == 1) {
+             x = (sw - w) / 2;
+             y = (sh - hh) / 2;
+            } else if (sp.getBoolean("vault_auto", false) && sp.getInt("vault_x", -1) >= 0) {
+             x = sp.getInt("vault_x", 0);
+             y = sp.getInt("vault_y", 0);
+            } else {
+             // floats above the bubble; below it when there is no room above
+             x = bx + bsize / 2 - w / 2;
+             y = by - hh - dp(10);
+             if (y < dp(28)) y = by + bsize + dp(10);
+             if (y + hh > sh - dp(8)) y = sh - hh - dp(8);
+            }
+            lp.x = clamp(x, margin, Math.max(margin, sw - w - margin));
+            lp.y = clamp(y, dp(24), Math.max(dp(24), sh - hh - margin));
+           }
+
+           boolean isShowing() { return root != null && !closing; }
+
+           void dismiss(boolean anim) {
+            if (closing) return;
+            closing = true;
+            closeMenu();
+            h.removeCallbacksAndMessages(null);
+            if (focusable) hideIme();
+            if (onClosed != null) onClosed.run();
+            final Root r = root;
+            if (r == null) return;
+            final Runnable rm = () -> { try { wm.removeView(r); } catch (Throwable e) { } };
+            if (anim) {
+             r.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f).setDuration(130).withEndAction(rm).start();
+            } else {
+             rm.run();
+            }
+           }
+
+           private void back() {
+            if (menuLayer != null) { closeMenu(); return; }
+            if (page != P_MAIN) { goMain(); return; }
+            dismiss(true);
+           }
+
+           // ---------- keyboard: the window becomes focusable only while a text field is in use ----------
+           private void enterKb() {
+            if (focusable || root == null) return;
+            focusable = true;
+            kbY = lp.y;
+            kbH = lp.height;
+            lp.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+            lp.y = dp(24);
+            lp.height = Math.min(lp.height, (int) (sh * 0.45f));
+            upd();
+           }
+
+           private void exitKb() {
+            if (!focusable) return;
+            hideIme();
+            focusable = false;
+            lp.flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+            lp.y = kbY;
+            lp.height = kbH;
+            upd();
+           }
+
+           private void showIme(View v) {
+            try {
+             InputMethodManager m = (InputMethodManager) ctx.getSystemService(Context.INPUT_METHOD_SERVICE);
+             m.showSoftInput(v, InputMethodManager.SHOW_IMPLICIT);
+            } catch (Throwable e) { }
+           }
+
+           private void hideIme() {
+            try {
+             InputMethodManager m = (InputMethodManager) ctx.getSystemService(Context.INPUT_METHOD_SERVICE);
+             if (root != null) m.hideSoftInputFromWindow(root.getWindowToken(), 0);
+            } catch (Throwable e) { }
+           }
+
+           private void attachKeyboard(final EditText et) {
+            et.setOnTouchListener((v, ev) -> {
+             if (ev.getAction() == MotionEvent.ACTION_DOWN && !focusable) {
+              enterKb();
+              h.postDelayed(() -> { et.requestFocus(); showIme(et); }, 150);
+             }
+             return false;
+            });
+           }
+
+           // ---------- building the frame ----------
+           private void build() {
+            root = new Root(ctx);
+            root.setLayoutDirection(fa ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+            GradientDrawable bg = rr(cardColor(), 26);
+            bg.setStroke(dp(1), 0x22000000);
+            root.setBackground(bg);
+            root.setClipToOutline(true);
+            LinearLayout col = new LinearLayout(ctx);
+            col.setOrientation(LinearLayout.VERTICAL);
+            root.addView(col, new FrameLayout.LayoutParams(MATCH, MATCH));
+
+            header = new LinearLayout(ctx);
+            header.setOrientation(LinearLayout.HORIZONTAL);
+            header.setGravity(Gravity.CENTER_VERTICAL);
+            header.setPadding(dp(10), dp(8), dp(10), dp(6));
+            col.addView(header, lpm(MATCH, dp(56), 0));
+
+            body = new FrameLayout(ctx);
+            col.addView(body, lpm(MATCH, 0, 1f));
+
+            footer = new LinearLayout(ctx);
+            footer.setOrientation(LinearLayout.HORIZONTAL);
+            footer.setGravity(Gravity.CENTER_VERTICAL);
+            footer.setPadding(dp(12), 0, dp(12), 0);
+            col.addView(footer, lpm(MATCH, dp(46), 0));
+
+            buildList();
+            detailHolder = new FrameLayout(ctx);
+            detailHolder.setVisibility(View.GONE);
+            body.addView(detailHolder, new FrameLayout.LayoutParams(MATCH, MATCH));
+            buildFooter();
+            attachDrag();
+            goMain();
+           }
+
+           // the frame can be moved by its top bar
+           private void attachDrag() {
+            final float slop = ViewConfiguration.get(ctx).getScaledTouchSlop();
+            header.setOnTouchListener(new View.OnTouchListener() {
+             float dx, dy;
+             int ox, oy;
+             boolean mv;
+
+             @Override
+             public boolean onTouch(View v, MotionEvent ev) {
+              switch (ev.getActionMasked()) {
+               case MotionEvent.ACTION_DOWN:
+                dx = ev.getRawX();
+                dy = ev.getRawY();
+                ox = lp.x;
+                oy = lp.y;
+                mv = false;
+                return true;
+               case MotionEvent.ACTION_MOVE: {
+                float mx = ev.getRawX() - dx, my = ev.getRawY() - dy;
+                if (!mv && Math.hypot(mx, my) > slop) mv = true;
+                if (mv) {
+                 lp.x = clamp(ox + (int) mx, 0, Math.max(0, sw - lp.width));
+                 lp.y = clamp(oy + (int) my, 0, Math.max(0, sh - lp.height));
+                 upd();
+                }
+                return true;
+               }
+               case MotionEvent.ACTION_UP:
+               case MotionEvent.ACTION_CANCEL:
+                if (mv && sp.getBoolean("vault_auto", false) && !focusable) {
+                 sp.edit().putInt("vault_x", lp.x).putInt("vault_y", lp.y).apply();
+                }
+                return true;
+              }
+              return false;
+             }
+            });
+           }
+
+           private void buildHeader() {
+            header.removeAllViews();
+            header.addView(circleBtn("\u2715", 0, 0xFF3A3F5C, 36, v -> dismiss(true)));
+            if (page == P_MAIN || page == P_SEARCH) {
+             if (!sel.isEmpty()) {
+              header.addView(trashPill());
+              header.addView(circleBtn("\u29C9", accent, 0xFFFFFFFF, 34, v -> copySelected()));
+             }
+             header.addView(new View(ctx), lpm(0, 1, 1f));
+             if (page == P_MAIN) {
+              header.addView(pill(t("سنجاق‌شده", "Pinned"), onlyPinned, v -> { onlyPinned = true; refresh(); buildHeader(); }));
+              header.addView(pill(t("همه", "All"), !onlyPinned, v -> { onlyPinned = false; refresh(); buildHeader(); }));
+             } else {
+              header.addView(circleBtn("\u2190", 0xFFEEF1F8, 0xFF2A2F4A, 34, v -> back()));
+             }
+            } else {
+             String title;
+             if (page == P_SET) title = "\u2699  " + t("تنظیمات", "Settings");
+             else title = (cur != null ? kindGlyph(cur) + "  " + preview(cur.text, 40) : "");
+             TextView tt = tv(title, 15, 0xFF1B1F3B, true);
+             tt.setSingleLine(true);
+             tt.setEllipsize(TextUtils.TruncateAt.END);
+             tt.setGravity(Gravity.CENTER_VERTICAL);
+             tt.setPadding(dp(8), 0, dp(8), 0);
+             tt.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+             header.addView(tt, lpm(0, WRAP, 1f));
+             header.addView(circleBtn("\u2190", 0xFFEEF1F8, 0xFF2A2F4A, 34, v -> back()));
+            }
+           }
+
+           private View trashPill() {
+            LinearLayout w = new LinearLayout(ctx);
+            w.setOrientation(LinearLayout.HORIZONTAL);
+            w.setGravity(Gravity.CENTER_VERTICAL);
+            w.setBackground(rr(0xFFE53935, 20));
+            w.setPadding(dp(11), dp(7), dp(11), dp(7));
+            w.addView(tv("\uD83D\uDDD1", 14, 0xFFFFFFFF, false));
+            TextView n = tv(fd(sel.size()), 12.5f, 0xFFFFFFFF, true);
+            n.setPadding(dp(5), 0, 0, 0);
+            w.addView(n);
+            w.setOnClickListener(v -> deleteSelected());
+            LinearLayout.LayoutParams p = lpm(WRAP, WRAP, 0);
+            p.setMargins(dp(4), 0, dp(4), 0);
+            w.setLayoutParams(p);
+            return w;
+           }
+
+           private String kindGlyph(Vault.Item it) {
+            if (it.pin) return "\uD83D\uDCCC";
+            if (it.kind == Vault.K_LINK) return "\uD83D\uDD17";
+            if (it.kind == Vault.K_NUM) return "#";
+            return "\uD83D\uDCC4";
+           }
+
+           private void buildFooter() {
+            footer.removeAllViews();
+            footer.addView(circleBtn("\u2611", 0, accent, 34, v -> selectAll()));
+            footer.addView(circleBtn("\uD83D\uDD0D", 0, accent, 34, v -> openSearch()));
+            countTv = tv("", 11.5f, 0xFF6B7190, false);
+            countTv.setSingleLine(true);
+            countTv.setPadding(dp(6), 0, dp(6), 0);
+            footer.addView(countTv, lpm(0, WRAP, 1f));
+            footer.addView(circleBtn("\u2699", 0xFFE8EEFF, accent, 36, v -> openSettings()));
+            updateCount();
+           }
+
+           private void updateCount() {
+            if (countTv == null) return;
+            countTv.setText(t("نمایش " + fd(shown.size()) + " مورد از " + fd(Vault.MAX) + " مورد",
+              "Showing " + shown.size() + " of " + Vault.MAX + " items"));
+           }
+
+           // ---------- the list ----------
+           private void buildList() {
+            listPane = new LinearLayout(ctx);
+            listPane.setOrientation(LinearLayout.VERTICAL);
+            listPane.setBackground(rr(panelColor(), 20));
+            FrameLayout.LayoutParams fl = new FrameLayout.LayoutParams(MATCH, MATCH);
+            fl.setMargins(dp(10), 0, dp(10), dp(4));
+            body.addView(listPane, fl);
+
+            searchBar = new LinearLayout(ctx);
+            searchBar.setOrientation(LinearLayout.HORIZONTAL);
+            searchBar.setGravity(Gravity.CENTER_VERTICAL);
+            GradientDrawable sbg = rr(0xFFFFFFFF, 24);
+            sbg.setStroke(dp(1), 0x22000000);
+            searchBar.setBackground(sbg);
+            searchBar.setPadding(dp(14), dp(2), dp(6), dp(2));
+            searchBar.setVisibility(View.GONE);
+            searchBar.addView(tv("\uD83D\uDD0D", 15, 0xFF5A6080, false));
+            searchEt = new EditText(ctx);
+            searchEt.setBackground(null);
+            searchEt.setSingleLine(true);
+            searchEt.setHint(t("جستجو در متن‌ها", "Search the texts"));
+            searchEt.setTextSize(14);
+            searchEt.setTextColor(0xFF1B1F3B);
+            searchEt.setHintTextColor(0xFF9AA0B8);
+            searchEt.setPadding(dp(10), 0, dp(10), 0);
+            searchEt.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+            searchEt.setInputType(InputType.TYPE_CLASS_TEXT);
+            searchEt.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+            searchEt.addTextChangedListener(new TextWatcher() {
+             @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
+             @Override public void onTextChanged(CharSequence s, int a, int b, int c) { }
+             @Override
+             public void afterTextChanged(Editable s) {
+              query = s.toString();
+              refresh();
+             }
+            });
+            searchEt.setOnEditorActionListener((v, a, e) -> { hideIme(); return true; });
+            attachKeyboard(searchEt);
+            searchBar.addView(searchEt, lpm(0, dp(44), 1f));
+            searchBar.addView(circleBtn("\u2715", 0, 0xFF5A6080, 32, v -> searchEt.setText("")));
+            LinearLayout.LayoutParams sbl = lpm(MATCH, WRAP, 0);
+            sbl.setMargins(dp(10), dp(8), dp(10), dp(4));
+            listPane.addView(searchBar, sbl);
+
+            listView = new ListView(ctx);
+            adapter = new RowAdapter();
+            listView.setAdapter(adapter);
+            listView.setDivider(new ColorDrawable(0x14000000));
+            listView.setDividerHeight(1);
+            listView.setSelector(new ColorDrawable(Color.TRANSPARENT));
+            listView.setVerticalScrollBarEnabled(false);
+            listView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+            listView.setItemsCanFocus(false);
+            FrameLayout lf = new FrameLayout(ctx);
+            lf.addView(listView, MATCH, MATCH);
+            emptyTv = tv("", 13, 0xFF8A90AA, false);
+            emptyTv.setGravity(Gravity.CENTER);
+            emptyTv.setVisibility(View.GONE);
+            lf.addView(emptyTv, new FrameLayout.LayoutParams(MATCH, MATCH));
+            listPane.addView(lf, lpm(MATCH, 0, 1f));
+           }
+
+           private void refresh() {
+            if (adapter == null) return;
+            List<Vault.Item> all = Vault.snapshot();
+            shown.clear();
+            String q = query.trim().toLowerCase();
+            Set<Long> ids = new HashSet<>();
+            for (Vault.Item it : all) {
+             ids.add(it.id);
+             if (onlyPinned && !it.pin) continue;
+             if (!q.isEmpty() && !it.text.toLowerCase().contains(q)) continue;
+             shown.add(it);
+            }
+            boolean had = !sel.isEmpty();
+            sel.retainAll(ids);
+            adapter.notifyDataSetChanged();
+            boolean empty = shown.isEmpty();
+            emptyTv.setVisibility(empty ? View.VISIBLE : View.GONE);
+            if (empty) {
+             if (!q.isEmpty()) emptyTv.setText(t("موردی پیدا نشد", "Nothing found"));
+             else if (onlyPinned) emptyTv.setText(t("هنوز موردی سنجاق نشده است", "No pinned items yet"));
+             else emptyTv.setText(t("مخزن خالی است؛ یک متن یا لینک کپی کنید", "The vault is empty; copy a text or a link"));
+            }
+            updateCount();
+            if (had && sel.isEmpty()) buildHeader();
+           }
+
+           private void onSelChanged() {
+            buildHeader();
+            adapter.notifyDataSetChanged();
+           }
+
+           private void selectAll() {
+            boolean all = !shown.isEmpty();
+            for (Vault.Item it : shown) if (!sel.contains(it.id)) { all = false; break; }
+            if (all) {
+             for (Vault.Item it : shown) sel.remove(it.id);
+            } else {
+             for (Vault.Item it : shown) sel.add(it.id);
+            }
+            onSelChanged();
+           }
+
+           private class RowAdapter extends BaseAdapter {
+            @Override public int getCount() { return shown.size(); }
+            @Override public Object getItem(int i) { return shown.get(i); }
+            @Override public long getItemId(int i) { return shown.get(i).id; }
+
+            @Override
+            public View getView(int pos, View cv, ViewGroup parent) {
+             Row r;
+             if (cv == null) {
+              r = new Row();
+              cv = r.build();
+              cv.setTag(r);
+             } else {
+              r = (Row) cv.getTag();
+             }
+             r.bind(shown.get(pos));
+             return cv;
+            }
+           }
+
+           private class Row {
+            LinearLayout rootV;
+            CheckBox cb;
+            TextView ico, txt, sub, cpy, more;
+            Vault.Item item;
+
+            View build() {
+             rootV = new LinearLayout(ctx);
+             rootV.setOrientation(LinearLayout.HORIZONTAL);
+             rootV.setGravity(Gravity.CENTER_VERTICAL);
+             rootV.setPadding(dp(8), dp(10), dp(6), dp(10));
+             rootV.setMinimumHeight(dp(64));
+             cb = new CheckBox(ctx);
+             cb.setFocusable(false);
+             cb.setFocusableInTouchMode(false);
+             cb.setOnClickListener(v -> {
+              if (item == null) return;
+              if (cb.isChecked()) sel.add(item.id); else sel.remove(item.id);
+              onSelChanged();
+             });
+             rootV.addView(cb, lpm(WRAP, WRAP, 0));
+             ico = tv("", 18, 0xFF2A2F4A, false);
+             ico.setGravity(Gravity.CENTER);
+             LinearLayout.LayoutParams ip = lpm(dp(40), dp(40), 0);
+             ip.setMargins(dp(4), 0, dp(10), 0);
+             rootV.addView(ico, ip);
+             LinearLayout colm = new LinearLayout(ctx);
+             colm.setOrientation(LinearLayout.VERTICAL);
+             txt = tv("", 14, 0xFF1B1F3B, false);
+             txt.setSingleLine(true);
+             txt.setEllipsize(TextUtils.TruncateAt.END);
+             txt.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+             sub = tv("", 11, 0xFF8A90AA, false);
+             sub.setSingleLine(true);
+             colm.addView(txt, lpm(MATCH, WRAP, 0));
+             colm.addView(sub, lpm(MATCH, WRAP, 0));
+             rootV.addView(colm, lpm(0, WRAP, 1f));
+             cpy = tv("\u29C9", 19, accent, true);
+             cpy.setGravity(Gravity.CENTER);
+             cpy.setOnClickListener(v -> { if (item != null) copyText(item.text); });
+             rootV.addView(cpy, lpm(dp(38), dp(38), 0));
+             more = tv("\u22EE", 20, 0xFF4A5070, true);
+             more.setGravity(Gravity.CENTER);
+             more.setOnClickListener(v -> { if (item != null) rowMenu(item, v); });
+             rootV.addView(more, lpm(dp(34), dp(38), 0));
+             rootV.setOnClickListener(v -> { if (item != null) copyText(item.text); });
+             rootV.setOnLongClickListener(v -> {
+              if (item != null) { v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS); onRowLong(item, v); }
+              return true;
+             });
+             return rootV;
+            }
+
+            void bind(Vault.Item it) {
+             item = it;
+             boolean on = sel.contains(it.id);
+             cb.setButtonTintList(ColorStateList.valueOf(accent));
+             cb.setChecked(on);
+             cpy.setTextColor(accent);
+             rootV.setBackgroundColor(on ? tint(accent, 0x1E) : 0);
+             int bg;
+             if (it.pin) bg = 0xFFEDE7F6;
+             else if (it.kind == Vault.K_LINK) bg = 0xFFE0F2FE;
+             else if (it.kind == Vault.K_NUM) bg = 0xFFE8F5E9;
+             else bg = 0xFFE3EDFF;
+             ico.setBackground(rr(bg, 12));
+             ico.setText(kindGlyph(it));
+             txt.setText(preview(it.text, 140));
+             sub.setText(ago(it.time));
+            }
+           }
+
+           // ---------- actions ----------
+           private void copyText(String text) {
+            try {
+             ClipboardManager cm = (ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
+             Vault.selfCopy = text.trim();
+             Vault.selfAt = SystemClock.uptimeMillis();
+             cm.setPrimaryClip(ClipData.newPlainText("vault", text));
+             Toast.makeText(ctx, t("کپی شد", "Copied"), Toast.LENGTH_SHORT).show();
+            } catch (Throwable e) { }
+            dismiss(true);
+           }
+
+           private void copySelected() {
+            if (sel.isEmpty()) return;
+            StringBuilder b = new StringBuilder();
+            for (Vault.Item it : Vault.snapshot()) {
+             if (!sel.contains(it.id)) continue;
+             if (b.length() > 0) b.append('\n');
+             b.append(it.text);
+            }
+            copyText(b.toString());
+           }
+
+           private void deleteSelected() {
+            if (sel.isEmpty()) return;
+            int n = sel.size();
+            Vault.delete(ctx, new HashSet<>(sel));
+            sel.clear();
+            refresh();
+            buildHeader();
+            Toast.makeText(ctx, fd(n) + t(" مورد حذف شد", " deleted"), Toast.LENGTH_SHORT).show();
+           }
+
+           private void deleteOne(Vault.Item it) {
+            Set<Long> one = new HashSet<>();
+            one.add(it.id);
+            Vault.delete(ctx, one);
+            sel.remove(it.id);
+            refresh();
+           }
+
+           private void pinToggle(Vault.Item it) {
+            Vault.togglePin(ctx, it.id);
+            refresh();
+           }
+
+           private void onRowLong(final Vault.Item it, View anchor) {
+            if (it.kind == Vault.K_TEXT) {
+             openDetail(it);
+             return;
+            }
+            String label = it.kind == Vault.K_LINK ? t("انتخاب و کپی لینک", "Select and copy link")
+              : t("انتخاب و کپی شماره", "Select and copy number");
+            showMenu(anchor, new String[]{label, t("نمایش کامل", "Show in full")},
+              new Runnable[]{() -> copyText(it.text), () -> openDetail(it)});
+           }
+
+           private void rowMenu(final Vault.Item it, View anchor) {
+            showMenu(anchor, new String[]{t("نمایش کامل", "Show in full"), t("کپی", "Copy"),
+                it.pin ? t("برداشتن سنجاق", "Unpin") : t("سنجاق", "Pin"), t("حذف", "Delete")},
+              new Runnable[]{() -> openDetail(it), () -> copyText(it.text), () -> pinToggle(it), () -> deleteOne(it)});
+           }
+
+           // ---------- small pop-up menu (a view inside the window) ----------
+           private void showMenu(View anchor, String[] labels, final Runnable[] acts) {
+            closeMenu();
+            if (root == null) return;
+            menuLayer = new FrameLayout(ctx);
+            menuLayer.setClickable(true);
+            menuLayer.setOnClickListener(v -> closeMenu());
+            LinearLayout card = new LinearLayout(ctx);
+            card.setOrientation(LinearLayout.VERTICAL);
+            GradientDrawable cg = rr(0xFFFFFFFF, 14);
+            cg.setStroke(dp(1), 0x26000000);
+            card.setBackground(cg);
+            card.setPadding(dp(4), dp(4), dp(4), dp(4));
+            for (int i = 0; i < labels.length; i++) {
+             TextView it = tv(labels[i], 14, 0xFF1B1F3B, false);
+             it.setPadding(dp(16), dp(12), dp(16), dp(12));
+             final int k = i;
+             it.setOnClickListener(v -> { closeMenu(); acts[k].run(); });
+             card.addView(it, lpm(WRAP, WRAP, 0));
+            }
+            card.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+              View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+            int mw = card.getMeasuredWidth(), mh = card.getMeasuredHeight();
+            int[] a = new int[2];
+            anchor.getLocationInWindow(a);
+            int left = clamp(a[0], dp(6), Math.max(dp(6), lp.width - mw - dp(6)));
+            int topY = a[1] + anchor.getHeight();
+            if (topY + mh > lp.height - dp(6)) topY = Math.max(dp(6), a[1] - mh);
+            FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(WRAP, WRAP);
+            cp.gravity = Gravity.TOP | Gravity.LEFT;
+            cp.leftMargin = left;
+            cp.topMargin = topY;
+            menuLayer.addView(card, cp);
+            root.addView(menuLayer, new FrameLayout.LayoutParams(MATCH, MATCH));
+           }
+
+           private void closeMenu() {
+            if (menuLayer != null && root != null) {
+             try { root.removeView(menuLayer); } catch (Throwable e) { }
+            }
+            menuLayer = null;
+           }
+
+           // ---------- pages ----------
+           private void goMain() {
+            closeMenu();
+            exitKb();
+            page = P_MAIN;
+            cur = null;
+            query = "";
+            if (searchEt != null) searchEt.setText("");
+            searchBar.setVisibility(View.GONE);
+            detailHolder.removeAllViews();
+            detailHolder.setVisibility(View.GONE);
+            listPane.setVisibility(View.VISIBLE);
+            footer.setVisibility(View.VISIBLE);
+            buildHeader();
+            refresh();
+           }
+
+           private void openSearch() {
+            closeMenu();
+            page = P_SEARCH;
+            query = "";
+            searchEt.setText("");
+            footer.setVisibility(View.GONE);
+            searchBar.setVisibility(View.VISIBLE);
+            buildHeader();
+            refresh();
+            enterKb();
+            h.postDelayed(() -> { searchEt.requestFocus(); showIme(searchEt); }, 150);
+           }
+
+           private void openDetail(Vault.Item it) {
+            closeMenu();
+            exitKb();
+            page = P_DETAIL;
+            cur = it;
+            listPane.setVisibility(View.GONE);
+            footer.setVisibility(View.GONE);
+            detailHolder.removeAllViews();
+            detailHolder.setVisibility(View.VISIBLE);
+            detailHolder.addView(buildDetail(it), new FrameLayout.LayoutParams(MATCH, MATCH));
+            buildHeader();
+           }
+
+           private void openSettings() {
+            closeMenu();
+            exitKb();
+            page = P_SET;
+            cur = null;
+            listPane.setVisibility(View.GONE);
+            footer.setVisibility(View.GONE);
+            detailHolder.removeAllViews();
+            detailHolder.setVisibility(View.VISIBLE);
+            detailHolder.addView(buildSettings(), new FrameLayout.LayoutParams(MATCH, MATCH));
+            buildHeader();
+           }
+
+           // ---------- the full text page ----------
+           private boolean isW(char c) {
+            return Character.isLetterOrDigit(c) || c == '_' || c == '\u200c';
+           }
+
+           private int[] wordRange(String s, int off) {
+            int n = s.length();
+            if (n == 0) return new int[]{0, 0};
+            int i = clamp(off, 0, n - 1);
+            if (!isW(s.charAt(i)) && i > 0 && isW(s.charAt(i - 1))) i--;
+            if (!isW(s.charAt(i))) return new int[]{i, i + 1};
+            int a = i, b = i + 1;
+            while (a > 0 && isW(s.charAt(a - 1))) a--;
+            while (b < n && isW(s.charAt(b))) b++;
+            return new int[]{a, b};
+           }
+
+           // a link, an e-mail address or a number under the finger
+           private int[] tokenAt(String s, int off) {
+            Matcher m = TOK.matcher(s);
+            while (m.find()) {
+             int a = m.start(), b = m.end();
+             while (b > a && ".,;:!?)\u060C\u061B".indexOf(s.charAt(b - 1)) >= 0) b--;
+             if (off >= a && off <= b && b > a) return new int[]{a, b};
+            }
+            return null;
+           }
+
+           private int offsetAt(TextView tvw, float x, float y) {
+            Layout l = tvw.getLayout();
+            if (l == null) return 0;
+            int yy = (int) y - tvw.getTotalPaddingTop();
+            yy = clamp(yy, 0, Math.max(0, l.getHeight() - 1));
+            int line = l.getLineForVertical(yy);
+            int xx = clamp((int) x - tvw.getTotalPaddingLeft(), 0, tvw.getWidth());
+            return l.getOffsetForHorizontal(line, xx);
+           }
+
+           private void paintSel(TextView tvw, String full, int s, int e) {
+            SpannableString ss = new SpannableString(full);
+            if (s >= 0 && e > s) ss.setSpan(new BackgroundColorSpan(tint(accent, 0x66)), s, e, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            tvw.setText(ss);
+           }
+
+           private TextView actionBtn(String s) {
+            TextView b = tv(s, 13, 0xFF2A2F4A, true);
+            b.setGravity(Gravity.CENTER);
+            b.setPadding(dp(4), dp(12), dp(4), dp(12));
+            b.setBackground(rr(0xFFEEF1F8, 16));
+            LinearLayout.LayoutParams p = lpm(0, WRAP, 1f);
+            p.setMargins(dp(4), 0, dp(4), 0);
+            b.setLayoutParams(p);
+            return b;
+           }
+
+           private View buildDetail(final Vault.Item it) {
+            final String full = it.text;
+            LinearLayout col = new LinearLayout(ctx);
+            col.setOrientation(LinearLayout.VERTICAL);
+
+            ScrollView sv = new ScrollView(ctx);
+            sv.setVerticalScrollBarEnabled(false);
+            LinearLayout box = new LinearLayout(ctx);
+            box.setOrientation(LinearLayout.VERTICAL);
+            box.setBackground(rr(panelColor(), 18));
+            box.setPadding(dp(14), dp(12), dp(14), dp(12));
+            final TextView txt = tv(full, 15, 0xFF1B1F3B, false);
+            txt.setLineSpacing(0f, 1.25f);
+            txt.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+            box.addView(txt, lpm(MATCH, WRAP, 0));
+            sv.addView(box, new FrameLayout.LayoutParams(MATCH, WRAP));
+            LinearLayout.LayoutParams svp = lpm(MATCH, 0, 1f);
+            svp.setMargins(dp(10), 0, dp(10), dp(8));
+            col.addView(sv, svp);
+
+            final TextView copyBtn = tv(t("کپی", "Copy"), 15, 0xFFFFFFFF, true);
+            copyBtn.setGravity(Gravity.CENTER);
+            copyBtn.setBackground(rr(accent, 16));
+            LinearLayout.LayoutParams cbp = lpm(MATCH, dp(48), 0);
+            cbp.setMargins(dp(10), 0, dp(10), dp(8));
+            col.addView(copyBtn, cbp);
+
+            LinearLayout ar = new LinearLayout(ctx);
+            ar.setOrientation(LinearLayout.HORIZONTAL);
+            ar.setPadding(dp(6), 0, dp(6), dp(10));
+            final TextView pinB = actionBtn("\uD83D\uDCCC " + (it.pin ? t("برداشتن", "Unpin") : t("سنجاق", "Pin")));
+            TextView delB = actionBtn("\uD83D\uDDD1 " + t("حذف", "Delete"));
+            TextView allB = actionBtn("\u2611 " + t("انتخاب همه", "Select all"));
+            ar.addView(pinB);
+            ar.addView(delB);
+            ar.addView(allB);
+            col.addView(ar, lpm(MATCH, WRAP, 0));
+
+            // the part chosen with the finger: {start, end}, -1 = nothing chosen
+            final int[] selR = {-1, -1};
+            final int[] anchor = {0, 0};
+            final boolean[] selecting = {false};
+            final float[] down = new float[2];
+            final long[] downAt = {0};
+            final float slop = ViewConfiguration.get(ctx).getScaledTouchSlop();
+            final Runnable label = () -> copyBtn.setText(selR[0] >= 0 ? t("کپی بخش انتخاب‌شده", "Copy the selection") : t("کپی", "Copy"));
+
+            final Runnable longRun = () -> {
+             int off = offsetAt(txt, down[0], down[1]);
+             int[] r = tokenAt(full, off);
+             if (r == null) r = wordRange(full, off);
+             if (r[1] <= r[0]) return;
+             selecting[0] = true;
+             anchor[0] = r[0];
+             anchor[1] = r[1];
+             selR[0] = r[0];
+             selR[1] = r[1];
+             txt.getParent().requestDisallowInterceptTouchEvent(true);
+             txt.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+             paintSel(txt, full, selR[0], selR[1]);
+             label.run();
+            };
+
+            txt.setOnTouchListener((v, ev) -> {
+             switch (ev.getActionMasked()) {
+              case MotionEvent.ACTION_DOWN:
+               down[0] = ev.getX();
+               down[1] = ev.getY();
+               downAt[0] = SystemClock.uptimeMillis();
+               selecting[0] = false;
+               h.postDelayed(longRun, 500);
+               return true;
+              case MotionEvent.ACTION_MOVE:
+               if (selecting[0]) {
+                // keep the finger down and slide: the chosen part grows over the words it touches
+                int off = offsetAt(txt, ev.getX(), ev.getY());
+                int[] w = wordRange(full, off);
+                int s = Math.min(anchor[0], w[0]), e = Math.max(anchor[1], w[1]);
+                if (s != selR[0] || e != selR[1]) {
+                 selR[0] = s;
+                 selR[1] = e;
+                 paintSel(txt, full, s, e);
+                }
+                return true;
+               }
+               if (Math.abs(ev.getX() - down[0]) > slop || Math.abs(ev.getY() - down[1]) > slop) h.removeCallbacks(longRun);
+               return true;
+              case MotionEvent.ACTION_UP:
+               h.removeCallbacks(longRun);
+               if (selecting[0]) {
+                selecting[0] = false;
+               } else if (selR[0] >= 0 && SystemClock.uptimeMillis() - downAt[0] < 300
+                 && Math.abs(ev.getX() - down[0]) < slop && Math.abs(ev.getY() - down[1]) < slop) {
+                // a short tap clears the chosen part
+                selR[0] = -1;
+                selR[1] = -1;
+                paintSel(txt, full, -1, -1);
+                label.run();
+               }
+               return true;
+              case MotionEvent.ACTION_CANCEL:
+               h.removeCallbacks(longRun);
+               selecting[0] = false;
+               return true;
+             }
+             return false;
+            });
+
+            copyBtn.setOnClickListener(v -> copyText(selR[0] >= 0 ? full.substring(selR[0], selR[1]) : full));
+            allB.setOnClickListener(v -> {
+             selR[0] = 0;
+             selR[1] = full.length();
+             paintSel(txt, full, 0, full.length());
+             label.run();
+            });
+            pinB.setOnClickListener(v -> {
+             Vault.togglePin(ctx, it.id);
+             pinB.setText("\uD83D\uDCCC " + (it.pin ? t("برداشتن", "Unpin") : t("سنجاق", "Pin")));
+             buildHeader();
+            });
+            delB.setOnClickListener(v -> { deleteOne(it); goMain(); });
+            return col;
+           }
+
+           // ---------- settings page ----------
+           private TextView label(String s) {
+            TextView l = tv(s, 13, 0xFF1B1F3B, true);
+            l.setPadding(dp(2), dp(14), dp(2), dp(6));
+            return l;
+           }
+
+           private TextView seg(String s, boolean on, View.OnClickListener c) {
+            TextView b = tv(s, 12.5f, on ? 0xFFFFFFFF : 0xFF2A2F4A, true);
+            b.setGravity(Gravity.CENTER);
+            b.setBackground(rr(on ? accent : 0xFFEEF1F8, 14));
+            b.setOnClickListener(c);
+            LinearLayout.LayoutParams p = lpm(0, dp(42), 1f);
+            p.setMargins(dp(3), 0, dp(3), 0);
+            b.setLayoutParams(p);
+            return b;
+           }
+
+           private EditText numField(String val, String hint) {
+            EditText e = new EditText(ctx);
+            e.setText(val);
+            e.setHint(hint);
+            e.setTextSize(14);
+            e.setTextColor(0xFF1B1F3B);
+            e.setHintTextColor(0xFF9AA0B8);
+            e.setGravity(Gravity.CENTER);
+            e.setSingleLine(true);
+            e.setInputType(InputType.TYPE_CLASS_NUMBER);
+            e.setImeOptions(EditorInfo.IME_ACTION_DONE);
+            e.setBackground(rr(0xFFF1F3F9, 12));
+            e.setPadding(dp(6), dp(8), dp(6), dp(8));
+            e.setOnEditorActionListener((v, a, ev) -> { exitKb(); return true; });
+            attachKeyboard(e);
+            LinearLayout.LayoutParams p = lpm(0, dp(44), 1f);
+            p.setMargins(dp(3), 0, dp(3), 0);
+            e.setLayoutParams(p);
+            return e;
+           }
+
+           private CheckBox checkRow(String s, boolean on) {
+            CheckBox c = new CheckBox(ctx);
+            c.setText(s);
+            c.setTextSize(13);
+            c.setTextColor(0xFF1B1F3B);
+            Typeface f = fa ? faFont() : null;
+            if (f != null) c.setTypeface(f);
+            c.setChecked(on);
+            c.setButtonTintList(ColorStateList.valueOf(accent));
+            c.setPadding(dp(6), dp(4), dp(6), dp(4));
+            return c;
+           }
+
+           private View buildSettings() {
+            ScrollView sv = new ScrollView(ctx);
+            sv.setVerticalScrollBarEnabled(false);
+            LinearLayout c = new LinearLayout(ctx);
+            c.setOrientation(LinearLayout.VERTICAL);
+            c.setPadding(dp(14), dp(2), dp(14), dp(16));
+            sv.addView(c, new FrameLayout.LayoutParams(MATCH, WRAP));
+
+            // window type
+            c.addView(label(t("نوع پنجره", "Window type")));
+            LinearLayout tr = new LinearLayout(ctx);
+            tr.setOrientation(LinearLayout.HORIZONTAL);
+            int type = sp.getInt("vault_type", 0);
+            tr.addView(seg(t("کادر شناور اختصاصی", "Floating frame"), type == 0, v -> {
+             sp.edit().putInt("vault_type", 0).apply();
+             place(lp.width, lp.height);
+             upd();
+             openSettings();
+            }));
+            tr.addView(seg(t("پاپ‌آپ وسط صفحه", "Centered popup"), type == 1, v -> {
+             sp.edit().putInt("vault_type", 1).apply();
+             place(lp.width, lp.height);
+             upd();
+             openSettings();
+            }));
+            c.addView(tr, lpm(MATCH, WRAP, 0));
+
+            // size and place
+            c.addView(label(t("ابعاد و موقعیت", "Size and position")));
+            LinearLayout dr = new LinearLayout(ctx);
+            dr.setOrientation(LinearLayout.HORIZONTAL);
+            dr.setGravity(Gravity.CENTER_VERTICAL);
+            final EditText ew = numField(String.valueOf(Math.round(lp.width / dens)), t("عرض DP", "Width DP"));
+            final EditText eh = numField(String.valueOf(Math.round((focusable ? kbH : lp.height) / dens)), t("ارتفاع DP", "Height DP"));
+            dr.addView(ew);
+            dr.addView(eh);
+            dr.addView(pill(t("ذخیره", "Save"), true, v -> {
+             try {
+              int wv = clamp(Integer.parseInt(ew.getText().toString().trim()), 240, Math.max(240, Math.round(sw / dens) - 8));
+              int hv = clamp(Integer.parseInt(eh.getText().toString().trim()), 260, Math.max(260, Math.round(sh / dens) - 48));
+              exitKb();
+              sp.edit().putInt("vault_w", wv).putInt("vault_h", hv).apply();
+              lp.width = dp(wv);
+              lp.height = dp(hv);
+              lp.x = clamp(lp.x, 0, Math.max(0, sw - lp.width));
+              lp.y = clamp(lp.y, dp(24), Math.max(dp(24), sh - lp.height - dp(8)));
+              upd();
+              Toast.makeText(ctx, t("ذخیره شد", "Saved"), Toast.LENGTH_SHORT).show();
+             } catch (Throwable ex) {
+              Toast.makeText(ctx, t("عدد نامعتبر است", "Invalid number"), Toast.LENGTH_SHORT).show();
+             }
+            }));
+            c.addView(dr, lpm(MATCH, WRAP, 0));
+
+            final CheckBox auto = checkRow(t("ذخیره خودکار ابعاد و مکان (با کشیدن نوار بالای کادر)", "Remember size and place (drag the top bar)"),
+              sp.getBoolean("vault_auto", false));
+            auto.setOnCheckedChangeListener((b, on) -> {
+             SharedPreferences.Editor ed = sp.edit().putBoolean("vault_auto", on);
+             if (on && !focusable) ed.putInt("vault_x", lp.x).putInt("vault_y", lp.y);
+             ed.apply();
+            });
+            c.addView(auto, lpm(MATCH, WRAP, 0));
+            TextView reset = pill(t("بازنشانی مکان", "Reset place"), false, v -> {
+             sp.edit().remove("vault_x").remove("vault_y").putBoolean("vault_auto", false).apply();
+             place(lp.width, lp.height);
+             upd();
+             auto.setChecked(false);
+             Toast.makeText(ctx, t("مکان بازنشانی شد", "Place reset"), Toast.LENGTH_SHORT).show();
+            });
+            LinearLayout rl = new LinearLayout(ctx);
+            rl.setOrientation(LinearLayout.HORIZONTAL);
+            rl.addView(reset);
+            c.addView(rl, lpm(MATCH, WRAP, 0));
+
+            // frame colour
+            c.addView(label(t("رنگ کادر", "Frame colour")));
+            LinearLayout cr = new LinearLayout(ctx);
+            cr.setOrientation(LinearLayout.HORIZONTAL);
+            cr.setGravity(Gravity.CENTER_VERTICAL);
+            int curC = clamp(sp.getInt("vault_color", 1), 0, 4);
+            for (int i = 0; i < ACC.length; i++) {
+             final int idx = i;
+             View sw1 = new View(ctx);
+             GradientDrawable g = oval(ACC[i]);
+             if (i == curC) g.setStroke(dp(3), 0xFF1B1F3B);
+             sw1.setBackground(g);
+             sw1.setOnClickListener(v -> {
+              sp.edit().putInt("vault_color", idx).apply();
+              accent = ACC[idx];
+              buildFooter();
+              adapter.notifyDataSetChanged();
+              openSettings();
+             });
+             LinearLayout.LayoutParams p = lpm(dp(38), dp(38), 0);
+             p.setMargins(dp(6), dp(4), dp(6), dp(4));
+             cr.addView(sw1, p);
+            }
+            c.addView(cr, lpm(MATCH, WRAP, 0));
+
+            // transparency
+            c.addView(label(t("شفافیت کادر", "Frame transparency")));
+            final TextView pv = tv(fd(alphaPct) + "%", 12, 0xFF6B7190, false);
+            SeekBar sb = new SeekBar(ctx);
+            sb.setMax(70);
+            sb.setProgress(alphaPct - 30);
+            sb.setProgressTintList(ColorStateList.valueOf(accent));
+            sb.setThumbTintList(ColorStateList.valueOf(accent));
+            sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+             @Override
+             public void onProgressChanged(SeekBar s, int p, boolean user) {
+              alphaPct = 30 + p;
+              pv.setText(fd(alphaPct) + "%");
+              GradientDrawable bg = rr(cardColor(), 26);
+              bg.setStroke(dp(1), 0x22000000);
+              root.setBackground(bg);
+              listPane.setBackground(rr(panelColor(), 20));
+             }
+             @Override public void onStartTrackingTouch(SeekBar s) { }
+             @Override public void onStopTrackingTouch(SeekBar s) { sp.edit().putInt("vault_alpha", alphaPct).apply(); }
+            });
+            c.addView(sb, lpm(MATCH, WRAP, 0));
+            c.addView(pv, lpm(WRAP, WRAP, 0));
+
+            // saving by a long touch inside other apps
+            c.addView(label(t("ذخیره خودکار", "Automatic saving")));
+            CheckBox lpc = checkRow(t("ذخیره متن با لمس طولانی ۱ ثانیه‌ای در برنامه‌ها (نیاز به سرویس دسترسی‌پذیری)",
+              "Save a text on a one-second long touch inside apps (needs the accessibility service)"), sp.getBoolean("vault_lp", true));
+            lpc.setOnCheckedChangeListener((b, on) -> sp.edit().putBoolean("vault_lp", on).apply());
+            c.addView(lpc, lpm(MATCH, WRAP, 0));
+
+            // clear everything that is not pinned (a second tap confirms)
+            final boolean[] armed = {false};
+            final TextView clr = tv(t("حذف همه (به‌جز سنجاق‌شده‌ها)", "Delete all (except pinned)"), 13, 0xFFFFFFFF, true);
+            clr.setGravity(Gravity.CENTER);
+            clr.setBackground(rr(0xFFE53935, 16));
+            clr.setOnClickListener(v -> {
+             if (!armed[0]) {
+              armed[0] = true;
+              clr.setText(t("برای تأیید دوباره بزنید", "Tap again to confirm"));
+              h.postDelayed(() -> {
+               armed[0] = false;
+               clr.setText(t("حذف همه (به‌جز سنجاق‌شده‌ها)", "Delete all (except pinned)"));
+              }, 3000);
+              return;
+             }
+             int n = Vault.clearUnpinned(ctx);
+             sel.clear();
+             armed[0] = false;
+             clr.setText(t("حذف همه (به‌جز سنجاق‌شده‌ها)", "Delete all (except pinned)"));
+             Toast.makeText(ctx, fd(n) + t(" مورد حذف شد", " deleted"), Toast.LENGTH_SHORT).show();
+            });
+            LinearLayout.LayoutParams cl = lpm(MATCH, dp(46), 0);
+            cl.topMargin = dp(18);
+            c.addView(clr, cl);
+            return sv;
+           }
+          }
+          EOF
+
+          cat > app/src/main/java/com/mylauncher/ClipGrabActivity.java <<'EOF'
+          package com.mylauncher;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+
+          // an invisible window that lives for a moment: Android lets only the app in front read the clipboard
+          public class ClipGrabActivity extends Activity {
+           private boolean done = false;
+
+           @Override
+           protected void onCreate(Bundle b) {
+            super.onCreate(b);
+            overridePendingTransition(0, 0);
+           }
+
+           @Override
+           public void onWindowFocusChanged(boolean f) {
+            super.onWindowFocusChanged(f);
+            if (f && !done) {
+             done = true;
+             try {
+              String t = Vault.readClip(this);
+              if (t != null) Vault.capture(this, t);
+             } catch (Throwable e) { }
+             finish();
+             overridePendingTransition(0, 0);
+            }
+           }
+          }
+          EOF
+
           cat > app/src/main/java/com/mylauncher/MockBubbleService.java <<'EOF'
           package com.mylauncher;
 
@@ -1479,6 +3178,7 @@ jobs:
           import android.animation.AnimatorListenerAdapter;
           import android.animation.ValueAnimator;
           import android.app.Service;
+          import android.content.ClipboardManager;
           import android.content.Intent;
           import android.content.SharedPreferences;
           import android.content.pm.ServiceInfo;
@@ -1532,6 +3232,7 @@ jobs:
             @Override
             public void run() {
              if (listRoot != null) return; // the action list is open: the bubble stays out
+             if (vaultUI != null) return;  // the vault is open: the bubble stays out
              if (backAnim != null) return; // the bubble is gliding back
              if (bubbleView != null && params != null) {
               int sw = getResources().getDisplayMetrics().widthPixels;
@@ -1560,6 +3261,7 @@ jobs:
             sp = getSharedPreferences("l", 0);
             wm = (WindowManager) getSystemService(WINDOW_SERVICE);
             ensureForeground();
+            startClipWatch();
            }
 
            // keeps the service alive so the system does not close the bubble
@@ -1635,6 +3337,7 @@ jobs:
            private String tr(String f, String e) { return fa() ? f : e; }
 
            private void onBubbleTap() {
+            if (vaultUI != null) { closeVault(true); return; }
             if (listRoot != null) { closeList(); return; }
             // this very touch just closed the list (touch outside the list = on the bubble): do not open it again
             if (Math.abs(downAt - lastOutside) < 250) return;
@@ -1651,6 +3354,42 @@ jobs:
 
            private ValueAnimator backAnim;
 
+           // app icons are loaded once (and ahead of time, while the bubble is being dragged) so the list opens without a hitch
+           private final java.util.Map<String, Drawable> svcIcons = new java.util.concurrent.ConcurrentHashMap<>();
+
+           private Drawable svcIcon(String pkg) {
+            if (pkg == null) return null;
+            Drawable d = svcIcons.get(pkg);
+            if (d == null) {
+             try { d = getPackageManager().getApplicationIcon(pkg); } catch (Throwable e) { return null; }
+             if (d == null) return null;
+             svcIcons.put(pkg, d);
+            }
+            try {
+             Drawable.ConstantState cs = d.getConstantState();
+             return cs != null ? cs.newDrawable(getResources()).mutate() : d;
+            } catch (Throwable e) { return d; }
+           }
+
+           private void prewarmSwipe() {
+            new Thread(() -> {
+             try {
+              for (String d : new String[]{"left", "down", "right"}) {
+               if ("list".equals(sp.getString("swm_" + d, ""))) warmKids(BubbleActs.kids(BubbleActs.swipeRoot(sp, d)), 0);
+              }
+             } catch (Throwable e) { }
+            }).start();
+           }
+
+           private void warmKids(List<BubbleActs.Act> ks, int depth) {
+            for (BubbleActs.Act k : ks) {
+             if (BubbleActs.isFolder(k)) { if (depth < 3) warmKids(BubbleActs.kids(k), depth + 1); }
+             else if (k.pkg != null && !svcIcons.containsKey(k.pkg)) {
+              try { svcIcons.put(k.pkg, getPackageManager().getApplicationIcon(k.pkg)); } catch (Throwable e) { }
+             }
+            }
+           }
+
            // after a swipe the bubble glides back to its own place with a soft, quick spring
            private void springBack(final int tx0, final int ty0, final Runnable after) {
             if (params == null || bubbleView == null) return;
@@ -1658,8 +3397,8 @@ jobs:
             final int fx0 = params.x, fy0 = params.y;
             final ValueAnimator an = ValueAnimator.ofFloat(0f, 1f);
             backAnim = an;
-            an.setDuration(200);
-            an.setInterpolator(new OvershootInterpolator(1.1f));
+            an.setDuration(120);
+            an.setInterpolator(new DecelerateInterpolator(1.6f));
             an.addUpdateListener(a -> {
              if (bubbleView == null) return;
              float t = (Float) a.getAnimatedValue();
@@ -1713,6 +3452,7 @@ jobs:
               dropSquash();
               swipeBase = true;
               showKids(kids, null);
+              afterBaseOpen(d);
              }
              return;
             }
@@ -1751,10 +3491,12 @@ jobs:
              // another folder of the same column: the open one goes and the new one comes, quickly
              swapFast = true;
              while (sideBoxes.size() >= next) closeTopSideAnim();
-             openSideBox(kidItems(BubbleActs.kids(k), null, next), fk);
+             pendingFid = k.fid;
+            openSideBox(kidItems(BubbleActs.kids(k), null, next), fk);
              swapFast = false;
              return;
             }
+            pendingFid = k.fid;
             openSideBox(kidItems(BubbleActs.kids(k), null, next), fk);
            }
 
@@ -1769,6 +3511,7 @@ jobs:
              l.add(back);
             }
             for (final BubbleActs.Act k : kids) {
+             if (BubbleActs.pinCol(sp, k) > 0) continue;
              LItem it = new LItem();
              if (BubbleActs.isFolder(k)) {
               it.icon = folderIcon();
@@ -1827,6 +3570,8 @@ jobs:
             private Integer forcedX = null, forcedY = null;
             private String curKey = null;
             private int curCX, curCY, lastRowLeft, lastRowRight, lastRowBottom;
+            private String pendingFid = null;
+            private int umPx(int um) { return (int) android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_MM, um / 1000f, getResources().getDisplayMetrics()); }
             private boolean noOpenFx = false;
             private boolean swapFast = false;
             private boolean swipeBase = false;
@@ -1866,7 +3611,65 @@ jobs:
             }
 
             // puts a new box next to the current one, at the same height
+            private void afterBaseOpen(final String scope) {
+             final FrameLayout base = listRoot;
+             if (base == null) return;
+             base.post(() -> openPins(scope));
+            }
+
+            // opens each pinned folder of the given list in its column, in column order
+            private void openPins(String scope) {
+             List<BubbleActs.Act> level = new ArrayList<>();
+             if ("bub_acts".equals(scope)) {
+              for (BubbleActs.Act a : BubbleActs.load(sp)) if (a != null) level.add(a);
+             } else {
+              level = BubbleActs.kids(BubbleActs.swipeRoot(sp, scope));
+             }
+             List<Object[]> pins = new ArrayList<>();
+             gatherPins(level, new ArrayList<BubbleActs.Act>(), pins);
+             java.util.Collections.sort(pins, (x, y) -> Integer.compare(BubbleActs.pinCol(sp, (BubbleActs.Act) x[0]), BubbleActs.pinCol(sp, (BubbleActs.Act) y[0])));
+             List<BubbleActs.Act> seq = new ArrayList<>();
+             java.util.Set<String> done = new java.util.HashSet<>();
+             for (Object[] pin : pins) {
+              @SuppressWarnings("unchecked")
+              List<BubbleActs.Act> chain = (List<BubbleActs.Act>) pin[1];
+              for (BubbleActs.Act anc : chain) if (done.add(anc.fid)) seq.add(anc);
+              BubbleActs.Act f = (BubbleActs.Act) pin[0];
+              if (done.add(f.fid)) seq.add(f);
+             }
+             // each column opens after the one before it, so they come out in order
+             final int step = sp.getInt("bub_fxms", 300) + 60;
+             for (int idx = 0; idx < seq.size(); idx++) {
+              final BubbleActs.Act f = seq.get(idx);
+              handler.postDelayed(() -> openOnePin(f), (long) idx * step);
+             }
+            }
+
+            private void gatherPins(List<BubbleActs.Act> level, List<BubbleActs.Act> chain, List<Object[]> out) {
+             for (BubbleActs.Act k : level) {
+              if (!BubbleActs.isFolder(k)) continue;
+              if (BubbleActs.pinCol(sp, k) > 0) out.add(new Object[]{k, new ArrayList<BubbleActs.Act>(chain)});
+              List<BubbleActs.Act> sub = new ArrayList<>(chain);
+              sub.add(k);
+              gatherPins(BubbleActs.kids(k), sub, out);
+             }
+            }
+
+            private void openOnePin(BubbleActs.Act f) {
+             if (listRoot == null || listParams == null) return;
+             int[] tl = new int[2];
+             listRoot.getLocationOnScreen(tl);
+             lastTouchRawY = tl[1];
+             lastRowLeft = tl[0];
+             lastRowRight = tl[0] + listRoot.getWidth();
+             lastRowBottom = tl[1] + listRoot.getHeight();
+             pendingFid = f.fid;
+             openSideBox(kidItems(BubbleActs.kids(f), null, sideBoxes.size() + 1), fkey(f));
+            }
+
             private void openSideBox(List<LItem> l, String key) {
+           final String fidNow = pendingFid;
+           pendingFid = null;
            int gap = dpToPx(3);
            boolean right = sp.getInt("mock_px", 70) > 50;
            int w = listParams.width;
@@ -1878,6 +3681,10 @@ jobs:
            int[] pl = new int[2];
            listRoot.getLocationOnScreen(pl);
            forcedY = lastTouchRawY - (pl[1] - listParams.y);
+           if (fidNow != null) {
+            forcedX = forcedX + umPx(sp.getInt("colwu_" + fidNow, 0));
+            forcedY = forcedY + umPx(sp.getInt("colhu_" + fidNow, 0));
+           }
            Box pb = new Box(listRoot, listCard, listParams, curKey);
            pb.cx = curCX; pb.cy = curCY;
            sideBoxes.add(pb);
@@ -1937,12 +3744,13 @@ jobs:
            private void openList(final boolean withLauncher) {
              swipeBase = false;
              if (sp.getBoolean("bub_auto", false) && TileClickService.ready()) {
-              TileClickService.sampleLuma(this, lum -> { if (lum < 0) Toast.makeText(this, tr("رنگ زیر کادرها خوانده نشد", "Could not read the colour under the boxes"), Toast.LENGTH_SHORT).show(); autoLight = lum > 128; customItems = null; openListCore(withLauncher); });
+              TileClickService.sampleLuma(this, lum -> { if (lum < 0) Toast.makeText(this, tr("رنگ زیر کادرها خوانده نشد", "Could not read the colour under the boxes"), Toast.LENGTH_SHORT).show(); autoLight = lum > 128; customItems = null; openListCore(withLauncher); afterBaseOpen("bub_acts"); });
               return;
              }
              if (sp.getBoolean("bub_auto", false)) Toast.makeText(this, tr("برای اتومات، سرویس دسترسی‌پذیری VadLan را روشن کنید", "For auto colours, turn on the VadLan accessibility service"), Toast.LENGTH_LONG).show();
              customItems = null;
              openListCore(withLauncher);
+             afterBaseOpen("bub_acts");
             }
 
            private void openCustomList(List<LItem> items) {
@@ -2242,7 +4050,7 @@ jobs:
             }
             if (showIco) {
              ImageView iv = new ImageView(this);
-             try { iv.setImageDrawable(icon != null ? icon : getPackageManager().getApplicationIcon(pkg)); } catch (Throwable e) { }
+             try { iv.setImageDrawable(icon != null ? icon : svcIcon(pkg)); } catch (Throwable e) { }
              iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
              LinearLayout.LayoutParams il = new LinearLayout.LayoutParams(isz, isz);
              if (showNm) il.setMarginEnd(dpToPx(8));
@@ -2292,6 +4100,7 @@ jobs:
              final BubbleActs.Act a = all[i];
              if (a == null) continue;
              if (BubbleActs.isFolder(a)) {
+              if (BubbleActs.pinCol(sp, a) > 0) continue;
               addListItem(null, 0, null, folderIcon(), BubbleActs.title(this, a),
                () -> folderTap(a, 0, () -> openList(listWithLauncher)));
               continue;
@@ -2392,6 +4201,7 @@ jobs:
                    android.os.VibrationEffect.DEFAULT_AMPLITUDE));
                 } catch (Throwable e) { }
                 if (listRoot != null) closeList();
+                if (sp.getBoolean("vault_on", false)) openVault();
                 bubbleView.animate().scaleX(1.12f).scaleY(1.12f).setDuration(120).start();
                }
               }
@@ -2417,7 +4227,7 @@ jobs:
                 lastDx = 0;
                 lastDy = 0;
                 downAt = SystemClock.uptimeMillis();
-                handler.postDelayed(longRun, 1000);
+                handler.postDelayed(longRun, sp.getBoolean("vault_on", false) ? 500 : 1000);
                 return true;
                case MotionEvent.ACTION_MOVE:
                 float dx = ev.getRawX() - tx, dy = ev.getRawY() - ty;
@@ -2426,11 +4236,13 @@ jobs:
                 if (!unlocked && !gesture && (Math.abs(dx) > dpToPx(8) || Math.abs(dy) > dpToPx(8))) {
                  // the bubble is locked: dragging it is a swipe, it does not move
                  gesture = true;
+                 prewarmSwipe();
                  handler.removeCallbacks(longRun);
                  if (listRoot != null) closeList();
                 }
                 if (unlocked && !moved && (Math.abs(dx) > dpToPx(8) || Math.abs(dy) > dpToPx(8))) {
                  moved = true;
+                 if (vaultUI != null) { closeVault(false); handler.removeCallbacks(collapseRunnable); }
                  if (listRoot != null) closeList();
                 }
                 if (moved || gesture) {
@@ -2451,10 +4263,7 @@ jobs:
                  final float sdx = lastDx, sdy = lastDy;
                  boolean fire = ev.getAction() == MotionEvent.ACTION_UP
                    && Math.max(Math.abs(sdx), Math.abs(sdy)) > dpToPx(28);
-                 springBack(ix, iy, fire ? new Runnable() {
-                  @Override
-                  public void run() { runSwipe(sdx, sdy); }
-                 } : null);
+                 springBack(ix, iy, fire ? () -> runSwipe(sdx, sdy) : null);
                 } else if (moved) {
                  int px = (int) (params.x * 100f / Math.max(1, sw - params.width));
                  int py = (int) (params.y * 100f / Math.max(1, sh - params.height));
@@ -2478,6 +4287,170 @@ jobs:
             } catch (Exception e) {}
            }
 
+           // ================= Vault: the launcher's own clipboard history =================
+           private VaultUI vaultUI;
+           private View magnetView;
+           private ClipboardManager clipMgr;
+           private long lastClipAt = 0;
+           private View grabView;
+           private boolean grabGotFocus = false;
+
+           private final ClipboardManager.OnPrimaryClipChangedListener clipListener = new ClipboardManager.OnPrimaryClipChangedListener() {
+            @Override
+            public void onPrimaryClipChanged() { onClipChanged(); }
+           };
+
+           private final Runnable grabTimeout = new Runnable() {
+            @Override
+            public void run() {
+             dropGrab();
+             if (!grabGotFocus) startGrabActivity();
+            }
+           };
+
+           // called by the Vault after something was saved
+           static void magnet() {
+            final MockBubbleService s = inst;
+            if (s != null) s.handler.post(() -> s.playMagnet());
+           }
+
+           private void startClipWatch() {
+            try {
+             clipMgr = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+             clipMgr.addPrimaryClipChangedListener(clipListener);
+            } catch (Throwable e) { }
+           }
+
+           private void stopClipWatch() {
+            try { if (clipMgr != null) clipMgr.removePrimaryClipChangedListener(clipListener); } catch (Throwable e) { }
+            dropGrab();
+           }
+
+           // something was copied anywhere on the phone
+           private void onClipChanged() {
+            if (!sp.getBoolean("vault_on", false)) return;
+            long now = SystemClock.uptimeMillis();
+            if (now - Vault.selfAt < 1500) return;      // the vault itself copied this
+            if (now - lastClipAt < 200) return;
+            lastClipAt = now;
+            String t = Vault.readClip(this);
+            if (t != null) {
+             Vault.capture(this, t);
+             return;
+            }
+            // Android does not let a background app read the clipboard: a tiny window takes the focus for a moment
+            grabWithFocus();
+           }
+
+           private void grabWithFocus() {
+            if (grabView != null || wm == null) return;
+            try {
+             grabGotFocus = false;
+             View v = new View(this) {
+              @Override
+              public void onWindowFocusChanged(boolean f) {
+               super.onWindowFocusChanged(f);
+               if (f && grabView == this) {
+                grabGotFocus = true;
+                handler.post(() -> {
+                 String t = Vault.readClip(MockBubbleService.this);
+                 dropGrab();
+                 if (t != null) Vault.capture(MockBubbleService.this, t);
+                });
+               }
+              }
+             };
+             WindowManager.LayoutParams gp = new WindowManager.LayoutParams(1, 1,
+               WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+               WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+               PixelFormat.TRANSLUCENT);
+             gp.gravity = Gravity.TOP | Gravity.LEFT;
+             grabView = v;
+             wm.addView(v, gp);
+             handler.postDelayed(grabTimeout, 600);
+            } catch (Throwable e) {
+             grabView = null;
+            }
+           }
+
+           private void dropGrab() {
+            handler.removeCallbacks(grabTimeout);
+            if (grabView != null) {
+             try { wm.removeView(grabView); } catch (Throwable e) { }
+             grabView = null;
+            }
+           }
+
+           // second way: an invisible window for a moment
+           private void startGrabActivity() {
+            try {
+             Intent i = new Intent(this, ClipGrabActivity.class);
+             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+             startActivity(i);
+            } catch (Throwable e) { }
+           }
+
+           // the Vault frame floats above the bubble
+           private void openVault() {
+            if (vaultUI != null || bubbleView == null || params == null) return;
+            try {
+             if (listRoot != null) closeList();
+             handler.removeCallbacks(collapseRunnable);
+             bubbleView.setAlpha(sp.getInt("mock_alpha", 90) / 100f);
+             vaultUI = new VaultUI(this, wm, sp, params.x, params.y, params.width,
+               () -> {
+                vaultUI = null;
+                if (listRoot == null) {
+                 handler.removeCallbacks(collapseRunnable);
+                 handler.postDelayed(collapseRunnable, collapseDelay());
+                }
+               },
+               () -> { lastOutside = SystemClock.uptimeMillis(); });
+             vaultUI.show();
+            } catch (Throwable e) {
+             vaultUI = null;
+            }
+           }
+
+           private void closeVault(boolean anim) {
+            if (vaultUI != null) vaultUI.dismiss(anim);
+           }
+
+           // the little magnet in the middle of the bubble: "saved in the vault"
+           private void playMagnet() {
+            if (bubbleView == null || params == null || wm == null) return;
+            try {
+             if (magnetView != null) {
+              try { wm.removeView(magnetView); } catch (Throwable e) { }
+              magnetView = null;
+             }
+             // a bubble folded into the side comes out for a moment, so the magnet is seen fully
+             boolean folded = bubbleView.getAlpha() < sp.getInt("mock_alpha", 90) / 100f - 0.01f;
+             if (folded && listRoot == null && vaultUI == null && backAnim == null) {
+              handler.removeCallbacks(collapseRunnable);
+              bubbleView.setAlpha(sp.getInt("mock_alpha", 90) / 100f);
+              applyPosition();
+              try { wm.updateViewLayout(bubbleView, params); } catch (Throwable e) { }
+              handler.postDelayed(collapseRunnable, collapseDelay() + 900);
+             }
+             final VaultUI.MagnetView mv = new VaultUI.MagnetView(this);
+             WindowManager.LayoutParams lp = new WindowManager.LayoutParams(params.width, params.height,
+               WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+               WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                 | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+               PixelFormat.TRANSLUCENT);
+             lp.gravity = Gravity.TOP | Gravity.LEFT;
+             lp.x = params.x;
+             lp.y = params.y;
+             magnetView = mv;
+             wm.addView(mv, lp);
+             mv.start(() -> {
+              try { wm.removeView(mv); } catch (Throwable e) { }
+              if (magnetView == mv) magnetView = null;
+             });
+            } catch (Throwable e) { }
+           }
+
            private int dpToPx(int dp) {
             return (int) (dp * getResources().getDisplayMetrics().density);
            }
@@ -2486,6 +4459,9 @@ jobs:
            public void onDestroy() {
             super.onDestroy();
             inst = null;
+            stopClipWatch();
+            if (vaultUI != null) { try { vaultUI.dismiss(false); } catch (Throwable e) { } vaultUI = null; }
+            if (magnetView != null && wm != null) { try { wm.removeView(magnetView); } catch (Throwable e) { } magnetView = null; }
             handler.removeCallbacksAndMessages(null);
             if (listRoot != null && wm != null) {
              try { wm.removeView(listRoot); } catch (Exception e) {}
@@ -4307,6 +6283,18 @@ jobs:
             final View old = container.getChildCount() > 0 ? container.getChildAt(0) : null;
             int W = container.getWidth() > 0 ? container.getWidth()
               : getResources().getDisplayMetrics().widthPixels;
+            if (old != null && dir == 0) {
+             container.addView(nv, new FrameLayout.LayoutParams(-1, -1));
+             nv.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+              @Override
+              public boolean onPreDraw() {
+               if (nv.getViewTreeObserver().isAlive()) nv.getViewTreeObserver().removeOnPreDrawListener(this);
+               container.removeView(old);
+               return true;
+              }
+             });
+             return;
+            }
             if (old == null || dir == 0) {
              container.removeAllViews();
              container.addView(nv, new FrameLayout.LayoutParams(-1, -1));
@@ -4351,8 +6339,15 @@ jobs:
            }
           }
 
+           int currentScrollY() {
+            if (container == null || container.getChildCount() == 0) return 0;
+            View c = container.getChildAt(container.getChildCount() - 1);
+            return c instanceof ScrollView ? ((ScrollView) c).getScrollY() : 0;
+           }
+
            void show() {
             saveKeep();
+            final int prevScrollY = currentScrollY();
             boolean mp = menuPage();
             int fg = 0xFFFFFFFF;
             if (mp && mbgBmp == null && isLight(solid(mbg()))) fg = 0xFF111111;
@@ -4430,6 +6425,10 @@ jobs:
             int from = shownPage;
             shownPage = page;
             swap(v, transDir(from, page));
+            if (from == page && v instanceof ScrollView && prevScrollY > 0) {
+             final ScrollView keepSv = (ScrollView) v;
+             keepSv.post(() -> keepSv.scrollTo(0, prevScrollY));
+            }
             if (page == HOME) container.postDelayed(() -> saveRunRect(), 600);
            }
 
@@ -7794,7 +9793,97 @@ jobs:
             return tv;
            }
 
-           View sectionTitle(String text, int fg) {
+          boolean collectFolders(List<BubbleActs.Act> level, String prefix, List<String> labels, List<String> fids) {
+           boolean changed = false;
+           for (BubbleActs.Act k : level) {
+            if (!BubbleActs.isFolder(k)) continue;
+            if (k.fid == null || k.fid.isEmpty()) { k.fid = BubbleActs.newFid(); changed = true; }
+            String name = prefix + BubbleActs.title(this, k);
+            labels.add(name);
+            fids.add(k.fid);
+            List<BubbleActs.Act> sub = BubbleActs.kids(k);
+            if (collectFolders(sub, name + " › ", labels, fids)) { BubbleActs.setKids(k, sub); changed = true; }
+           }
+           return changed;
+          }
+
+          BubbleActs.Act selectedFolder(final int idx) {
+           if (page == FEDIT) {
+            fEdit(l -> {
+             if (idx < l.size() && BubbleActs.isFolder(l.get(idx)) && (l.get(idx).fid == null || l.get(idx).fid.isEmpty()))
+              l.get(idx).fid = BubbleActs.newFid();
+            });
+            List<BubbleActs.Act> ks = fKids();
+            return idx < ks.size() && BubbleActs.isFolder(ks.get(idx)) ? ks.get(idx) : null;
+           }
+           BubbleActs.Act[] acts = BubbleActs.load(sp);
+           if (idx < acts.length && BubbleActs.isFolder(acts[idx])) {
+            if (acts[idx].fid == null || acts[idx].fid.isEmpty()) { acts[idx].fid = BubbleActs.newFid(); BubbleActs.save(sp, acts); }
+            return acts[idx];
+           }
+           return null;
+          }
+
+          void leverSelected(final int idx, final boolean height) {
+           BubbleActs.Act f = selectedFolder(idx);
+           if (f != null) colLeverDialog(f, height);
+          }
+
+          void pinSelected(final int idx) {
+           BubbleActs.Act f = selectedFolder(idx);
+           if (f != null) pinChooser(f);
+          }
+
+          // pins the folder at once (to the first free column, 2 to 5); a pinned folder is unpinned
+          void pinChooser(final BubbleActs.Act f) {
+           if (f == null || f.fid == null || f.fid.isEmpty()) return;
+           if (BubbleActs.pinCol(sp, f) > 0) {
+            BubbleActs.setPin(sp, f.fid, 0);
+            Toast.makeText(this, t("پین برداشته شد", "Unpinned"), Toast.LENGTH_SHORT).show();
+           } else {
+            JSONObject used = BubbleActs.pins(sp);
+            int col = 5;
+            for (int c = 2; c <= 5; c++) {
+             boolean taken = false;
+             java.util.Iterator<String> it = used.keys();
+             while (it.hasNext()) if (used.optInt(it.next(), 0) == c) { taken = true; break; }
+             if (!taken) { col = c; break; }
+            }
+            BubbleActs.setPin(sp, f.fid, col);
+            Toast.makeText(this, t("پوشه پین شد", "Folder pinned"), Toast.LENGTH_SHORT).show();
+           }
+           show();
+          }
+
+          void colLeverDialog(final BubbleActs.Act f, final boolean height) {
+           final String key = (height ? "colhu_" : "colwu_") + f.fid;
+           LinearLayout box = new LinearLayout(this);
+           box.setOrientation(LinearLayout.VERTICAL);
+           box.setPadding(dp(20), dp(12), dp(20), dp(8));
+           final TextView val = new TextView(this);
+           val.setTextSize(16);
+           val.setText(sp.getInt(key, 0) + " µm");
+           box.addView(val);
+           SeekBar sb = new SeekBar(this);
+           sb.setMax(40000);
+           sb.setProgress(sp.getInt(key, 0) + 20000);
+           sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar bar, int prog, boolean fromUser) {
+             int v = prog - 20000;
+             sp.edit().putInt(key, v).apply();
+             val.setText(v + " µm");
+            }
+            public void onStartTrackingTouch(SeekBar bar) { }
+            public void onStopTrackingTouch(SeekBar bar) { }
+           });
+           box.addView(sb);
+           new AlertDialog.Builder(this)
+             .setTitle(height ? t("ارتفاع ستون", "Column height") : t("عرض ستون", "Column width"))
+             .setView(box)
+             .setPositiveButton(t("تأیید", "OK"), null).show();
+          }
+
+          View sectionTitle(String text, int fg) {
             TextView tv = new TextView(this);
             tv.setText(text);
             tv.setTextColor(fg);
@@ -8183,7 +10272,7 @@ jobs:
            }
 
            // the bar on top of a list while items are selected: cancel, count, delete
-           View selBar(final int fg, final Runnable onDelete) {
+           View selBar(final int fg, final Runnable onDelete, final boolean folderSel, final Runnable onHeight, final Runnable onWidth, final Runnable onPin) {
             LinearLayout b = new LinearLayout(this);
             b.setGravity(Gravity.CENTER_VERTICAL);
             b.setPadding(dp(12), dp(6), dp(8), dp(6));
@@ -8200,6 +10289,11 @@ jobs:
             n.setTextColor(fg);
             n.setTextSize(14);
             b.addView(n, new LinearLayout.LayoutParams(0, -2, 1));
+            if (folderSel) {
+             b.addView(btn(t("ارتفاع", "Height"), fg, v -> onHeight.run()));
+             b.addView(btn(t("عرض", "Width"), fg, v -> onWidth.run()));
+             b.addView(btn(t("پین", "Pin"), fg, v -> onPin.run()));
+            }
             b.addView(btn(t("حذف", "Delete") + " (" + selIdx.size() + ")", 0xFFE53935, v -> onDelete.run()));
             return b;
            }
@@ -8247,7 +10341,11 @@ jobs:
             hint.setAlpha(0.65f);
             hint.setPadding(dp(4), dp(10), dp(4), 0);
             r.addView(hint);
-            if (selMode) r.addView(selBar(fg, () -> selDeleteSlots()));
+            if (selMode && !selIdx.isEmpty()) {
+             final int fi = selIdx.iterator().next();
+             r.addView(selBar(fg, () -> selDeleteSlots(), selIdx.size() == 1 && BubbleActs.isFolder(BubbleActs.load(sp)[fi]),
+               () -> leverSelected(fi, true), () -> leverSelected(fi, false), () -> pinSelected(fi)));
+            }
             final float oldFade = boxFade;
             boxFade = 0.6f; // the slots are secondary (fainter) boxes
             final BubbleActs.Act[] acts = BubbleActs.load(sp);
@@ -8315,25 +10413,43 @@ jobs:
             if (BubbleActs.isFolder(a)) {
              CharSequence[] fi = {
                t("📂 باز کردن پوشه", "📂 Open folder"),
+               BubbleActs.pinCol(sp, a) > 0 ? t("📍 برداشتن پین", "📍 Unpin") : t("📌 پین کردن", "📌 Pin"),
+               t("ارتفاع ستون", "Column height"),
+               t("عرض ستون", "Column width"),
                t("تغییر نام", "Rename"),
                t("حذف", "Delete")};
              new AlertDialog.Builder(this).setTitle((slot + 1) + ". " + BubbleActs.title(this, a))
                .setItems(fi, (d, w) -> {
                 if (w == 0) { fSrc = slot; fDir = ""; fPath = new int[0]; page = FEDIT; show(); }
-                else if (w == 1) actAskName(slot, "", BubbleActs.title(this, a), BubbleActs.title(this, a), true);
+                else if (w == 1) {
+                 if (a.fid == null || a.fid.isEmpty()) { a.fid = BubbleActs.newFid(); BubbleActs.save(sp, acts); }
+                 pinChooser(a);
+                }
+                else if (w == 2 || w == 3) {
+                 if (a.fid == null || a.fid.isEmpty()) { a.fid = BubbleActs.newFid(); BubbleActs.save(sp, acts); }
+                 colLeverDialog(a, w == 2);
+                }
+                else if (w == 4) actAskName(slot, "", BubbleActs.title(this, a), BubbleActs.title(this, a), true);
                 else { acts[slot] = null; BubbleActs.save(sp, acts); sp.edit().remove("bub_on_s" + slot).apply(); show(); }
                }).setNegativeButton(t("لغو", "Cancel"), null).show();
              return;
             }
             CharSequence[] items = {
-              t("تغییر عملکرد", "Change action"),
+              t("باز شدن در پاپ آپ", "Open in popup"),
+              t("باز شدن کامل", "Open full"),
               t("تغییر نام", "Rename"),
               t("حذف", "Delete")};
             new AlertDialog.Builder(this).setTitle((slot + 1) + ". " + BubbleActs.title(this, a))
               .setItems(items, (d, w) -> {
-               if (w == 0) {
-                actPickApp(slot);
-               } else if (w == 1) {
+               if (w == 0 || w == 1) {
+                a.type = "app";
+                a.id = w == 0 ? "popup" : "full";
+                a.label = w == 0 ? t("باز شدن در پاپ آپ", "Open in popup") : t("باز شدن کامل", "Open full");
+                a.ts = System.currentTimeMillis();
+                acts[slot] = a;
+                BubbleActs.save(sp, acts);
+                show();
+               } else if (w == 2) {
                 actAskName(slot, a.pkg, BubbleActs.appLabel(this, a.pkg), BubbleActs.title(this, a), true);
                } else {
                 acts[slot] = null;
@@ -8546,7 +10662,12 @@ jobs:
             r.addView(pageHint(fg, t("برای جابه‌جایی، هر مورد را یک ثانیه نگه دارید و بکشید. با + برنامه یا پوشه جدید اضافه کنید (حداکثر ۳۰ مورد). پوشه‌ها را هم می‌توانید باز کنید و داخلشان مورد بگذارید.",
               "To move an item, hold it for one second and drag. Use + to add apps or folders (up to 30). Folders can be opened and filled too.")));
             List<BubbleActs.Act> kids = fKids();
-            if (selMode) r.addView(selBar(fg, () -> selDeleteKids()));
+            if (selMode && !selIdx.isEmpty()) {
+             final int fi = selIdx.iterator().next();
+             List<BubbleActs.Act> fks = fKids();
+             r.addView(selBar(fg, () -> selDeleteKids(), selIdx.size() == 1 && fi < fks.size() && BubbleActs.isFolder(fks.get(fi)),
+               () -> leverSelected(fi, true), () -> leverSelected(fi, false), () -> pinSelected(fi)));
+            }
             final float oldFade = boxFade;
             boxFade = 0.6f;
             final List<View> rows = new ArrayList<>();
@@ -9421,6 +11542,19 @@ jobs:
               t("افزودن کلید Vad به پنل تنظیمات سریع", "Add the Vad button to Quick Settings"),
               sp.getBoolean("tile", false) ? 3 : 2, fg,
               v -> setTile(!sp.getBoolean("tile", false))));
+            // Vault: the launcher's own clipboard history (up to 700 texts, numbers and links)
+            r.addView(toggleRowThen(0xFFEC407A, "🧲", t("مخزن", "Vault"),
+              t("کلیپ‌بورد داخلی لانچر: تا ۷۰۰ متن، عدد و لینک کپی‌شده ذخیره می‌شود. حباب را نیم‌ثانیه نگه دارید تا مخزن باز شود",
+                "The launcher's own clipboard history: keeps up to 700 copied texts, numbers and links. Hold the bubble for half a second to open it"),
+              "vault_on", false, fg, () -> {
+               if (sp.getBoolean("vault_on", false)) {
+                if (!sp.getBoolean("mock_on", false) || !Settings.canDrawOverlays(this)) {
+                 Toast.makeText(this, t("مخزن به حباب نیاز دارد؛ حباب را روشن کنید", "The vault needs the bubble; turn the bubble on"),
+                   Toast.LENGTH_LONG).show();
+                }
+               }
+               show();
+              }));
             return wrapScroll(r);
            }
 
