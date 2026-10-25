@@ -1676,7 +1676,8 @@ jobs:
         CharSequence direct = first.getText();
         if (direct == null && ds != null && !ds.hasMimeType("text/*")) return "";
         CharSequence cs = direct != null ? direct : first.coerceToText(c);
-        return cs == null ? null : cs.toString();
+        if (cs == null || cs.toString().trim().isEmpty()) return null;
+        return cs.toString();
        } catch (Throwable e) {
         return null;
        }
@@ -1690,6 +1691,20 @@ jobs:
        if (add(c, s)) MockBubbleService.magnet();
       }
 
+      static String nodeText(AccessibilityNodeInfo n, int depth) {
+       if (n == null) return null;
+       CharSequence cs = n.getText();
+       if (cs != null && cs.toString().trim().length() > 0) return cs.toString();
+       cs = n.getContentDescription();
+       if (cs != null && cs.toString().trim().length() > 0) return cs.toString();
+       if (depth <= 0) return null;
+       for (int i = 0; i < n.getChildCount(); i++) {
+        String r = nodeText(n.getChild(i), depth - 1);
+        if (r != null && r.trim().length() > 0) return r;
+       }
+       return null;
+      }
+
       static void onA11y(Context c, AccessibilityEvent e) {
        if (e == null || e.getEventType() != AccessibilityEvent.TYPE_VIEW_LONG_CLICKED) return;
        SharedPreferences sp = c.getSharedPreferences("l", 0);
@@ -1701,8 +1716,11 @@ jobs:
        try {
         AccessibilityNodeInfo n = e.getSource();
         if (n != null) {
-         CharSequence cs = n.getText();
-         if (cs != null) t = cs.toString();
+         t = nodeText(n, 3);
+         if (t == null || t.trim().isEmpty()) {
+          AccessibilityNodeInfo pr = n.getParent();
+          if (pr != null) t = nodeText(pr, 2);
+         }
         }
        } catch (Throwable ex) { }
        if (t == null || t.trim().isEmpty()) {
@@ -4212,8 +4230,9 @@ jobs:
        if (now - lastClipAt < 80) return;
        lastClipAt = now;
        String t = Vault.readClip(this);
+       if ((t == null || t.isEmpty()) && TileClickService.inst != null) t = Vault.readClip(TileClickService.inst);
        if (t != null) {
-        Vault.capture(this, t);
+        if (!t.isEmpty()) Vault.capture(this, t);
         return;
        }
        grabWithFocus();
