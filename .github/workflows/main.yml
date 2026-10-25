@@ -1875,7 +1875,9 @@ jobs:
            forcedX = right ? listParams.x - w - gap : listParams.x + w + gap;
            // the new column starts at the height of the touched folder
            int y = lastTouchRawY;
-           forcedY = Math.max(dpToPx(8), Math.min(sh - listParams.height - dpToPx(8), y));
+           int[] pl = new int[2];
+           listRoot.getLocationOnScreen(pl);
+           forcedY = lastTouchRawY - (pl[1] - listParams.y);
            Box pb = new Box(listRoot, listCard, listParams, curKey);
            pb.cx = curCX; pb.cy = curCY;
            sideBoxes.add(pb);
@@ -1987,8 +1989,7 @@ jobs:
               -2, -2, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
               WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                 | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
-                | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
               PixelFormat.TRANSLUCENT);
             listParams.gravity = Gravity.TOP | Gravity.LEFT;
             if (glass && !sep && Build.VERSION.SDK_INT >= 31) {
@@ -2177,7 +2178,7 @@ jobs:
             listParams.x = right ? sw - w - dpToPx(8) : dpToPx(8);
             listParams.y = Math.max(edge, y);
             if (forcedX != null) listParams.x = Math.max(dpToPx(4), Math.min(sw - w - dpToPx(4), forcedX));
-            if (forcedY != null) listParams.y = Math.max(dpToPx(8), Math.min(sh - listParams.height - dpToPx(8), forcedY));
+            if (forcedY != null) listParams.y = forcedY;
             try {
              if (add) wm.addView(listRoot, listParams);
              else wm.updateViewLayout(listRoot, listParams);
