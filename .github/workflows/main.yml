@@ -1671,9 +1671,11 @@ jobs:
          try {
           if (ds.getExtras() != null && ds.getExtras().getBoolean("android.content.extra.IS_SENSITIVE", false)) return "";
          } catch (Throwable e) { }
-         if (!ds.hasMimeType("text/*")) return "";
         }
-        CharSequence cs = d.getItemAt(0).coerceToText(c);
+        ClipData.Item first = d.getItemAt(0);
+        CharSequence direct = first.getText();
+        if (direct == null && ds != null && !ds.hasMimeType("text/*")) return "";
+        CharSequence cs = direct != null ? direct : first.coerceToText(c);
         return cs == null ? null : cs.toString();
        } catch (Throwable e) {
         return null;
@@ -4207,7 +4209,7 @@ jobs:
        if (!sp.getBoolean("vault_on", false)) return;
        long now = SystemClock.uptimeMillis();
        if (now - Vault.selfAt < 1500) return;      // the vault itself copied this
-       if (now - lastClipAt < 200) return;
+       if (now - lastClipAt < 80) return;
        lastClipAt = now;
        String t = Vault.readClip(this);
        if (t != null) {
@@ -4231,6 +4233,7 @@ jobs:
             String t = Vault.readClip(MockBubbleService.this);
             dropGrab();
             if (t != null) Vault.capture(MockBubbleService.this, t);
+            else startGrabActivity();
            });
           }
          }
@@ -4242,7 +4245,7 @@ jobs:
         gp.gravity = Gravity.TOP | Gravity.LEFT;
         grabView = v;
         wm.addView(v, gp);
-        handler.postDelayed(grabTimeout, 600);
+        handler.postDelayed(grabTimeout, 1000);
        } catch (Throwable e) {
         grabView = null;
        }
