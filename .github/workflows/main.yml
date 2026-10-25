@@ -451,6 +451,16 @@ jobs:
        } catch (Throwable e) { }
       }
 
+      void copyHint() {
+       try {
+        Toast.makeText(this, "Vault: copy button seen", Toast.LENGTH_SHORT).show();
+        h.postDelayed(new Runnable() {
+         @Override
+         public void run() { vOverlayGrab(); }
+        }, 200);
+       } catch (Throwable e) { }
+      }
+
       private android.view.View vGrab;
       private boolean vGot = false;
       private final Runnable vTimeout = new Runnable() {
@@ -1875,6 +1885,8 @@ jobs:
         if (lab == null && e.getText() != null && !e.getText().isEmpty()) lab = String.valueOf(e.getText().get(0));
         if (!isCopyLabel(lab)) return;
         captureSelected(c);
+        TileClickService ts = TileClickService.inst;
+        if (ts != null) ts.copyHint();
        } catch (Throwable ex) { }
       }
 
