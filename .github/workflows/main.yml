@@ -415,16 +415,55 @@ jobs:
       }
 
       @Override
-      protected void onServiceConnected() { inst = this; }
+      protected void onServiceConnected() { inst = this; vStart(); }
+
+      private android.content.ClipboardManager vcm;
+      private long vLast = 0;
+      private final android.content.ClipboardManager.OnPrimaryClipChangedListener vListener =
+        new android.content.ClipboardManager.OnPrimaryClipChangedListener() {
+         @Override
+         public void onPrimaryClipChanged() { vClipChanged(); }
+        };
+
+      private void vStart() {
+       try {
+        if (vcm != null) vcm.removePrimaryClipChangedListener(vListener);
+        vcm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        vcm.addPrimaryClipChangedListener(vListener);
+       } catch (Throwable e) { }
+      }
+
+      private void vClipChanged() {
+       try {
+        SharedPreferences sp = getSharedPreferences("l", 0);
+        if (!sp.getBoolean("vault_on", false)) return;
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - Vault.selfAt < 1500) return;
+        if (now - vLast < 80) return;
+        vLast = now;
+        String t = Vault.readClip(this);
+        if (t != null) {
+         if (!t.isEmpty()) Vault.capture(this, t);
+         return;
+        }
+        if (Vault.captureSelected(this)) return;
+        if (MockBubbleService.inst != null) return;   // the bubble service runs its own fallbacks
+        Intent i = new Intent(this, ClipGrabActivity.class);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+        startActivity(i);
+       } catch (Throwable e) { }
+      }
 
       @Override
       public boolean onUnbind(Intent i) {
+       try { if (vcm != null) vcm.removePrimaryClipChangedListener(vListener); } catch (Throwable e) { }
        inst = null;
        return super.onUnbind(i);
       }
 
       @Override
       public void onDestroy() {
+       try { if (vcm != null) vcm.removePrimaryClipChangedListener(vListener); } catch (Throwable e) { }
        inst = null;
        super.onDestroy();
       }
@@ -1728,6 +1767,33 @@ jobs:
        } catch (Throwable ex) { }
       }
 
+      static String scanSel(AccessibilityNodeInfo n, int[] budget) {
+       if (n == null || budget[0]-- <= 0) return null;
+       try {
+        CharSequence tx = n.getText();
+        int a = n.getTextSelectionStart(), b = n.getTextSelectionEnd();
+        if (tx != null && a >= 0 && b > a && b <= tx.length()) return tx.subSequence(a, b).toString();
+       } catch (Throwable ex) { }
+       for (int i = 0; i < n.getChildCount(); i++) {
+        String r = scanSel(n.getChild(i), budget);
+        if (r != null && !r.trim().isEmpty()) return r;
+       }
+       return null;
+      }
+
+      static boolean captureSelected(Context c) {
+       String t = null;
+       try {
+        TileClickService s = TileClickService.inst;
+        if (s != null) t = scanSel(s.getRootInActiveWindow(), new int[]{800});
+       } catch (Throwable ex) { }
+       if ((t == null || t.trim().isEmpty()) && !selText.isEmpty() && SystemClock.uptimeMillis() - selAt < 30000) t = selText;
+       if (t == null || t.trim().isEmpty()) return false;
+       selText = "";
+       capture(c, t.trim());
+       return true;
+      }
+
       static boolean isCopyLabel(String x) {
        if (x == null) return false;
        String l = x.trim().toLowerCase();
@@ -1742,10 +1808,7 @@ jobs:
         if (lab == null && e.getContentDescription() != null) lab = e.getContentDescription().toString();
         if (lab == null && e.getText() != null && !e.getText().isEmpty()) lab = String.valueOf(e.getText().get(0));
         if (!isCopyLabel(lab)) return;
-        if (selText.isEmpty() || SystemClock.uptimeMillis() - selAt > 30000) return;
-        String t = selText;
-        selText = "";
-        capture(c, t);
+        captureSelected(c);
        } catch (Throwable ex) { }
       }
 
@@ -4286,6 +4349,7 @@ jobs:
         if (!t.isEmpty()) Vault.capture(this, t);
         return;
        }
+       if (Vault.captureSelected(this)) return;
        grabWithFocus();
       }
 
