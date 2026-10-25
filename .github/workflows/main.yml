@@ -446,12 +446,78 @@ jobs:
          if (!t.isEmpty()) Vault.capture(this, t);
          return;
         }
-        if (Vault.captureSelected(this)) return;
-        if (MockBubbleService.inst != null) return;   // the bubble service runs its own fallbacks
+        Toast.makeText(this, "Vault: copy seen", Toast.LENGTH_SHORT).show();
+        vOverlayGrab();
+       } catch (Throwable e) { }
+      }
+
+      private android.view.View vGrab;
+      private boolean vGot = false;
+      private final Runnable vTimeout = new Runnable() {
+       @Override
+       public void run() {
+        boolean got = vGot;
+        vDrop();
+        if (!got) vActivity();
+       }
+      };
+
+      private void vDrop() {
+       h.removeCallbacks(vTimeout);
+       if (vGrab != null) {
+        try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(vGrab); } catch (Throwable e) { }
+        vGrab = null;
+       }
+      }
+
+      private void vActivity() {
+       try {
         Intent i = new Intent(this, ClipGrabActivity.class);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
         startActivity(i);
-       } catch (Throwable e) { }
+       } catch (Throwable e) {
+        if (!Vault.captureSelected(this)) Toast.makeText(this, "Vault: cannot open grabber", Toast.LENGTH_SHORT).show();
+       }
+      }
+
+      private void vOverlayGrab() {
+       if (vGrab != null) return;
+       try {
+        WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+        vGot = false;
+        android.view.View v = new android.view.View(this) {
+         @Override
+         public void onWindowFocusChanged(boolean f) {
+          super.onWindowFocusChanged(f);
+          if (f && vGrab == this) {
+           vGot = true;
+           h.post(new Runnable() {
+            @Override
+            public void run() {
+             String t = Vault.readClip(TileClickService.this);
+             vDrop();
+             if (t != null) {
+              if (!t.isEmpty()) Vault.capture(TileClickService.this, t);
+             } else if (!Vault.captureSelected(TileClickService.this)) {
+              Toast.makeText(TileClickService.this, "Vault: clipboard could not be read", Toast.LENGTH_SHORT).show();
+             }
+            }
+           });
+          }
+         }
+        };
+        WindowManager.LayoutParams gp = new WindowManager.LayoutParams(2, 2,
+          WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+          WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+          PixelFormat.TRANSLUCENT);
+        gp.gravity = Gravity.TOP | Gravity.LEFT;
+        vGrab = v;
+        wm.addView(v, gp);
+        h.postDelayed(vTimeout, 900);
+       } catch (Throwable e) {
+        vGrab = null;
+        vActivity();
+       }
       }
 
       @Override
@@ -3218,7 +3284,7 @@ jobs:
         try {
          String t = Vault.readClip(this);
          if (t != null) Vault.capture(this, t);
-         else android.widget.Toast.makeText(this, "Vault: clipboard could not be read", android.widget.Toast.LENGTH_SHORT).show();
+         else if (!Vault.captureSelected(this)) android.widget.Toast.makeText(this, "Vault: clipboard could not be read", android.widget.Toast.LENGTH_SHORT).show();
         } catch (Throwable e) { }
         finish();
         overridePendingTransition(0, 0);
@@ -4349,6 +4415,7 @@ jobs:
         if (!t.isEmpty()) Vault.capture(this, t);
         return;
        }
+       if (TileClickService.inst != null) return;
        if (Vault.captureSelected(this)) return;
        grabWithFocus();
       }
