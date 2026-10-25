@@ -1502,6 +1502,7 @@ jobs:
           import android.view.View;
           import android.view.ViewPropertyAnimator;
           import android.view.WindowManager;
+          import android.view.animation.AccelerateInterpolator;
           import android.view.animation.DecelerateInterpolator;
           import android.view.animation.OvershootInterpolator;
           import android.widget.FrameLayout;
@@ -1618,6 +1619,7 @@ jobs:
            private void openLauncher(boolean settings) {
             Intent i = new Intent(MockBubbleService.this, MainActivity.class);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            i.putExtra("from_bubble", true);
             if (settings) i.putExtra("open_mock_settings", true);
             startActivity(i);
            }
@@ -1709,6 +1711,7 @@ jobs:
              List<BubbleActs.Act> kids = BubbleActs.kids(BubbleActs.swipeRoot(sp, d));
              if (!kids.isEmpty()) {
               dropSquash();
+              swipeBase = true;
               showKids(kids, null);
              }
              return;
@@ -1744,7 +1747,12 @@ jobs:
             final int next = owner + 1;
             if (next <= top) {
              String nk = next < top ? sideBoxes.get(next).key : curKey;
-             if (fk.equals(nk)) { while (sideBoxes.size() >= next) closeTopSideAnim(); }
+             if (fk.equals(nk)) { while (sideBoxes.size() >= next) closeTopSideAnim(); return; }
+             // another folder of the same column: the open one goes and the new one comes, quickly
+             swapFast = true;
+             while (sideBoxes.size() >= next) closeTopSideAnim();
+             openSideBox(kidItems(BubbleActs.kids(k), null, next), fk);
+             swapFast = false;
              return;
             }
             openSideBox(kidItems(BubbleActs.kids(k), null, next), fk);
@@ -1812,12 +1820,16 @@ jobs:
 
             // boxes kept open next to each other ("folder box" option); the newest one is listRoot
             static class Box {
-             FrameLayout root; LinearLayout card; WindowManager.LayoutParams p; String key;
+             FrameLayout root; LinearLayout card; WindowManager.LayoutParams p; String key; int cx, cy;
              Box(FrameLayout r, LinearLayout c, WindowManager.LayoutParams q, String k) { root = r; card = c; p = q; key = k; }
             }
             private final List<Box> sideBoxes = new java.util.ArrayList<>();
             private Integer forcedX = null, forcedY = null;
             private String curKey = null;
+            private int curCX, curCY, lastRowLeft, lastRowRight, lastRowBottom;
+            private boolean noOpenFx = false;
+            private boolean swapFast = false;
+            private boolean swipeBase = false;
             private int listTextColor = 0xFFFFFFFF;
             private int lastTouchRawY = 0;
 
@@ -1855,73 +1867,48 @@ jobs:
 
             // puts a new box next to the current one, at the same height
             private void openSideBox(List<LItem> l, String key) {
-           int gap = dpToPx(8);
+           int gap = dpToPx(3);
            boolean right = sp.getInt("mock_px", 70) > 50;
            int w = listParams.width;
            int sh = getResources().getDisplayMetrics().heightPixels;
+           final int cxN = right ? lastRowLeft : lastRowRight, cyN = lastRowBottom;
            forcedX = right ? listParams.x - w - gap : listParams.x + w + gap;
            // the new column starts at the height of the touched folder
            int y = lastTouchRawY;
            forcedY = Math.max(dpToPx(8), Math.min(sh - listParams.height - dpToPx(8), y));
-           sideBoxes.add(new Box(listRoot, listCard, listParams, curKey));
+           Box pb = new Box(listRoot, listCard, listParams, curKey);
+           pb.cx = curCX; pb.cy = curCY;
+           sideBoxes.add(pb);
            listRoot = null;
            listCard = null;
            slideOpen = true;
+           noOpenFx = true;
            openCustomList(l);
+           noOpenFx = false;
            slideOpen = false;
            curKey = key;
+           curCX = cxN; curCY = cyN;
            forcedX = null;
            forcedY = null;
-           // slides in from the bubble side
-           final WindowManager.LayoutParams p = listParams;
-           final FrameLayout root = listRoot;
-           final int to = p.x;
-           final int from = to + (right ? dpToPx(80) : -dpToPx(80));
-           p.x = from;
-           try { wm.updateViewLayout(root, p); } catch (Exception e) { }
-           ValueAnimator va = ValueAnimator.ofFloat(0f, 1f);
-           va.setDuration(230);
-           va.setInterpolator(new DecelerateInterpolator());
-           va.addUpdateListener(an -> {
-            p.x = from + Math.round((to - from) * (Float) an.getAnimatedValue());
-            try { wm.updateViewLayout(root, p); } catch (Exception e) { }
-           });
-           va.start();
+           fxAnim(listRoot, listParams, true, cxN, cyN, lastTouchRawY, sp.getInt("bub_fxf", 0), null);
           }
 
-          // closes the newest column with a slide back to the bubble side; the column under it is shown again
+          // closes the newest column with the chosen effect, towards its folder corner; the column under it is shown again
           private void closeTopSideAnim() {
            if (sideBoxes.isEmpty() || listRoot == null) { closeList(); return; }
            final FrameLayout old = listRoot;
            final WindowManager.LayoutParams op = listParams;
+           final int ocx = curCX, ocy = curCY;
            Box b = sideBoxes.remove(sideBoxes.size() - 1);
            listRoot = b.root;
            listCard = b.card;
            listParams = b.p;
            curKey = b.key;
-           final int dir = sp.getInt("mock_px", 70) > 50 ? 1 : -1;
-           final int from = op.x;
-           final int to = from + dir * dpToPx(80);
-           ValueAnimator va = ValueAnimator.ofFloat(0f, 1f);
-           va.setDuration(220);
-           va.setInterpolator(new DecelerateInterpolator());
-           va.addUpdateListener(an -> {
-            float t = (Float) an.getAnimatedValue();
-            op.x = from + Math.round((to - from) * t);
-            old.setAlpha(1f - t);
-            try { wm.updateViewLayout(old, op); } catch (Exception e) { }
-           });
-           va.addListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator an) {
-             try { wm.removeView(old); } catch (Exception e) { }
-            }
-           });
-           va.start();
+           curCX = b.cx; curCY = b.cy;
+           fxAnim(old, op, false, ocx, ocy, ocy, sp.getInt("bub_fxf", 0), () -> { try { wm.removeView(old); } catch (Exception e) { } });
           }
 
-          // closes the newest box; the box under it is shown again
-            private void closeTopSide() {
+          private void closeTopSide() {
              if (sideBoxes.isEmpty()) { closeList(); return; }
              if (listRoot != null) { try { wm.removeView(listRoot); } catch (Exception e) { } }
              Box b = sideBoxes.remove(sideBoxes.size() - 1);
@@ -1946,6 +1933,7 @@ jobs:
            private List<LItem> customItems = null;
 
            private void openList(final boolean withLauncher) {
+             swipeBase = false;
              if (sp.getBoolean("bub_auto", false) && TileClickService.ready()) {
               TileClickService.sampleLuma(this, lum -> { if (lum < 0) Toast.makeText(this, tr("رنگ زیر کادرها خوانده نشد", "Could not read the colour under the boxes"), Toast.LENGTH_SHORT).show(); autoLight = lum > 128; customItems = null; openListCore(withLauncher); });
               return;
@@ -1999,7 +1987,8 @@ jobs:
               -2, -2, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
               WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                 | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+                | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+                | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
               PixelFormat.TRANSLUCENT);
             listParams.gravity = Gravity.TOP | Gravity.LEFT;
             if (glass && !sep && Build.VERSION.SDK_INT >= 31) {
@@ -2009,7 +1998,8 @@ jobs:
              } catch (Throwable e) { }
             }
             fillList();
-            if (slideOpen || sp.getInt("bub_fx", 6) != 0) listRoot.setAlpha(0f);   // the opening effect shows it
+            final int eff = noOpenFx ? sp.getInt("bub_fxf", 0) : (swipeBase ? sp.getInt("bub_fxs", 6) : (slideOpen ? 2 : sp.getInt("bub_fx", 6)));
+            if (eff != 0) listRoot.setAlpha(0f);   // the opening effect shows it
             layoutList(true);
             playOpen();
            }
@@ -2017,8 +2007,9 @@ jobs:
            // opening effect of the action list (0 none, 1 fade, 2 slide from the side, 3 grow from the bubble, 5 slide from the top, 6 stretchy drop)
            private void playOpen() {
             final FrameLayout r = listRoot;
-            final int fx = (slideOpen ? 2 : sp.getInt("bub_fx", 6));
+            final int fx = noOpenFx ? 0 : (swipeBase ? sp.getInt("bub_fxs", 6) : (slideOpen ? 2 : sp.getInt("bub_fx", 6)));
             if (r == null || fx == 0) return;
+            if (fx == 2 || fx == 4 || fx == 7) { final int[] bp = bubblePivot(); fxAnim(r, listParams, true, bp[0], bp[1], Integer.MIN_VALUE, fx, null); return; }
             final long ms = Math.max(100, Math.min(1500, sp.getInt("bub_fxms", 300)));
             final boolean right = sp.getInt("mock_px", 70) > 50;
             r.post(() -> {
@@ -2077,24 +2068,71 @@ jobs:
             });
            }
 
-           private void closeList() {
-             for (Box b : sideBoxes) { try { wm.removeView(b.root); } catch (Exception e) { } }
+           private int[] bubblePivot() {
+             if (params == null) return new int[]{0, 0};
+             return new int[]{params.x + params.width / 2, params.y + params.height / 2};
+            }
+
+            // the chosen box effect (the same for opening and closing); (px,py) = the screen point the box grows from / shrinks to
+            private void fxAnim(final FrameLayout r, final WindowManager.LayoutParams p, final boolean open, final int px, final int py, final int folderTop, final int fx, final Runnable end) {
+             final long ms = swapFast ? 130 : Math.max(100, Math.min(1500, sp.getInt("bub_fxms", 300)));
+             final int w = Math.max(1, p.width), h = Math.max(1, p.height);
+             final int ex = p.x, ey = p.y;
+             final boolean folder = folderTop != Integer.MIN_VALUE;
+             final boolean right = sp.getInt("mock_px", 70) > 50;
+             r.setPivotX(px - ex);
+             r.setPivotY(py - ey);
+             if (fx == 0) { r.setAlpha(1f); r.setScaleX(1f); r.setScaleY(1f); if (end != null) end.run(); return; }
+             final int x0, y0;
+             if (fx == 2 || fx == 5) {
+              if (!folder) { x0 = px - w / 2; y0 = py - h / 2; }
+              else if (fx == 5) { x0 = ex; y0 = folderTop - h; }
+              else { x0 = right ? px : px - w; y0 = py - h; }
+             } else { x0 = ex; y0 = ey; }
+             ValueAnimator va = ValueAnimator.ofFloat(open ? 0f : 1f, open ? 1f : 0f);
+             va.setDuration(open ? ms : Math.max(100, ms - 60));
+             va.setInterpolator(open ? new DecelerateInterpolator() : new AccelerateInterpolator());
+             va.addUpdateListener(an -> {
+              float f = (Float) an.getAnimatedValue();
+              float a = Math.min(1f, f * 3f);
+              if (fx == 1) r.setAlpha(f);
+              else if (fx == 3) { float sc = 0.05f + 0.95f * f; r.setScaleX(sc); r.setScaleY(sc); r.setAlpha(a); }
+              else if (fx == 4) { r.setScaleY(0.05f + 0.95f * f); r.setAlpha(a); }
+              else if (fx == 6) { r.setScaleX(0.3f + 0.7f * f); r.setScaleY(0.05f + 0.95f * f); r.setAlpha(a); }
+              else if (fx == 7) { r.setScaleX(0.05f + 0.95f * f); r.setAlpha(a); }
+              else {
+               r.setAlpha(a);
+               if (fx == 5 && !folder && !open) { float sc = 0.1f + 0.9f * f; r.setScaleX(sc); r.setScaleY(sc); }
+               p.x = Math.round(x0 + (ex - x0) * f);
+               p.y = Math.round(y0 + (ey - y0) * f);
+               try { wm.updateViewLayout(r, p); } catch (Exception e) { }
+              }
+             });
+             va.addListener(new AnimatorListenerAdapter() {
+              @Override
+              public void onAnimationEnd(Animator an) { if (end != null) end.run(); }
+             });
+             va.start();
+            }
+
+            private void closeList() {
+             final int[] bpv = bubblePivot();
+             final int mainFx = swipeBase ? sp.getInt("bub_fxs", 6) : sp.getInt("bub_fx", 6);
+             // the first box is the action list itself; the newest box may be a folder column, so it is not always the main one
+             final FrameLayout mainRoot = !sideBoxes.isEmpty() ? sideBoxes.get(0).root : listRoot;
+             final WindowManager.LayoutParams mainP = !sideBoxes.isEmpty() ? sideBoxes.get(0).p : listParams;
+             // every folder column goes at once, with no effect
+             for (Box b : sideBoxes) { if (b.root != mainRoot) { try { wm.removeView(b.root); } catch (Exception e) { } } }
+             if (listRoot != null && listRoot != mainRoot) { try { wm.removeView(listRoot); } catch (Exception e) { } }
              sideBoxes.clear();
              curKey = null;
-            final FrameLayout old = listRoot;
-            listRoot = null;
-            listCard = null;
-            customItems = null;
-            if (old != null) {
-             final int fx = sp.getInt("bub_fx", 6);
-             if (fx == 0) {
-              try { wm.removeView(old); } catch (Exception e) {}
-             } else {
-              // a short fade-out, then the window goes
-              old.animate().alpha(0f).setDuration(Math.max(80, Math.min(1500, sp.getInt("bub_fxms", 300)) / 2))
-                .withEndAction(() -> { try { wm.removeView(old); } catch (Exception e) {} }).start();
+             listRoot = null;
+             listCard = null;
+             customItems = null;
+             if (mainRoot != null) {
+              final FrameLayout closing = mainRoot;
+              fxAnim(mainRoot, mainP, false, bpv[0], bpv[1], Integer.MIN_VALUE, mainFx, () -> { try { wm.removeView(closing); } catch (Exception e) { } });
              }
-            }
             handler.removeCallbacks(collapseRunnable);
             handler.postDelayed(collapseRunnable, collapseDelay());
            }
@@ -2218,7 +2256,7 @@ jobs:
             }
             row.setOnTouchListener((v, ev) -> {
              int a = ev.getAction();
-             if (a == MotionEvent.ACTION_DOWN) { int[] rl = new int[2]; v.getLocationOnScreen(rl); lastTouchRawY = rl[1]; }
+             if (a == MotionEvent.ACTION_DOWN) { int[] rl = new int[2]; v.getLocationOnScreen(rl); lastTouchRawY = rl[1]; lastRowLeft = rl[0]; lastRowRight = rl[0] + v.getWidth(); lastRowBottom = rl[1] + v.getHeight(); }
              if (sep) {
               if (a == MotionEvent.ACTION_DOWN) v.setAlpha(0.65f);
               else if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL) v.setAlpha(1f);
@@ -2876,6 +2914,8 @@ jobs:
            protected void onNewIntent(Intent in) {
             super.onNewIntent(in);
             setIntent(in);
+            // opened from the bubble while it is running in the background: it comes back as it was
+            if (in != null && in.getBooleanExtra("from_bubble", false)) return;
             page = HOME;
             if (!sp.getBoolean("fpKeep", false)) openFolder = null;
             plusOpen = false;
@@ -7753,27 +7793,42 @@ jobs:
             return tv;
            }
 
+           View sectionTitle(String text, int fg) {
+            TextView tv = new TextView(this);
+            tv.setText(text);
+            tv.setTextColor(fg);
+            tv.setTextSize(13);
+            tv.setTypeface(null, Typeface.BOLD);
+            tv.setAlpha(0.7f);
+            tv.setPadding(dp(6), dp(18), dp(6), dp(4));
+            return tv;
+           }
+
            View settingsPage(final int fg) {
             LinearLayout r = vbox();
             r.addView(topBar(t("تنظیمات", "Settings"), fg));
-            r.addView(row(0xFF00ACC1, "☰", t("نوار ابزار", "Toolbar"), null, 0, fg,
-              v -> { page = TBAR; show(); }));
-            r.addView(row(0xFF5E35B1, "🏠", t("صفحه خانگی", "Home Page"), null, 0, fg,
-              v -> { page = HPAGE; show(); }));
+            r.addView(sectionTitle(t("ظاهر", "Appearance"), fg));
             r.addView(row(0xFF5C6BC0, "🎨", t("پس‌زمینه", "Background"), null, 0, fg,
               v -> { page = BG; show(); }));
-            r.addView(row(0xFFFF9800, "🚀", t("رفتار", "Behavior"), null, 0, fg,
-              v -> { page = BEHAVIOR; show(); }));
-            r.addView(row(0xFF29B6F6, "⚓", t("داک", "Dock"), null, 0, fg,
-              v -> { page = DOCK; show(); }));
-            r.addView(row(0xFFFF5722, "🔮", t("حباب", "Bubble"), null, 0, fg,
-              v -> { page = MOCK; show(); }));
-            r.addView(row(0xFF8D6E63, "📁", t("تنظیمات پوشه", "Folder Settings"), null, 0, fg,
-              v -> { page = FOLDER; show(); }));
             r.addView(row(0xFF3F51B5, "Aa", t("فونت", "Font"), null, 0, fg,
               v -> { page = FONT; show(); }));
             r.addView(row(0xFFEC407A, "🌐", t("زبان", "Language"), fa ? "فارسی" : "English", 0, fg,
               v -> { page = LANG; show(); }));
+            r.addView(sectionTitle(t("صفحه اصلی", "Home screen"), fg));
+            r.addView(row(0xFF00ACC1, "☰", t("نوار ابزار", "Toolbar"), null, 0, fg,
+              v -> { page = TBAR; show(); }));
+            r.addView(row(0xFF5E35B1, "🏠", t("صفحه خانگی", "Home Page"), null, 0, fg,
+              v -> { page = HPAGE; show(); }));
+            r.addView(row(0xFF29B6F6, "⚓", t("داک", "Dock"), null, 0, fg,
+              v -> { page = DOCK; show(); }));
+            r.addView(row(0xFF8D6E63, "📁", t("تنظیمات پوشه", "Folder Settings"), null, 0, fg,
+              v -> { page = FOLDER; show(); }));
+            r.addView(sectionTitle(t("حباب", "Bubble"), fg));
+            r.addView(row(0xFFFF5722, "🔮", t("حباب", "Bubble"), null, 0, fg,
+              v -> { page = MOCK; show(); }));
+            r.addView(sectionTitle(t("رفتار و پشتیبان", "Behavior and backup"), fg));
+            r.addView(row(0xFFFF9800, "🚀", t("رفتار", "Behavior"), null, 0, fg,
+              v -> { page = BEHAVIOR; show(); }));
             r.addView(row(0xFF43A047, "💾", t("پشتیبان", "Backup"),
               t("گرفتن و فراخوانی نسخه پشتیبان تنظیمات", "Create and restore settings backups"), 0, fg,
               v -> { page = BACKUP; show(); }));
@@ -7786,6 +7841,8 @@ jobs:
             LinearLayout r = vbox();
             r.addView(topBar(t("صفحه خانگی", "Home Page"), fg));
             final boolean on = sp.getBoolean("hfOn", false);
+
+            r.addView(sectionTitle(t("کادر", "Frame"), fg));
             r.addView(row(0xFF7E57C2, "▣", t("کادر صفحه خانگی", "Home page frame"),
               t("کادری مثل پوشه فراگیر پشت آیکون‌های صفحه", "A frame like the immersive folder behind the icons"),
               on ? 3 : 2, fg, v -> {
@@ -7795,17 +7852,20 @@ jobs:
             r.addView(row(0xFFFF7043, "🖼", t("پس‌زمینه کادر", "Frame background"),
               t("رنگ، شفافیت و عکس کادر", "Color, transparency and picture of the frame"), 0, fg,
               v -> { page = HFBG; show(); }));
+            r.addView(toggleRow(0xFF7E57C2, "▣", t("افکت کادر", "Frame effect"),
+              t("افکت صفحه روی کل کادر صفحه اصلی اجرا می‌شود و آیکون‌ها با کادر جابجا می‌شوند (نیاز به صفحات افقی و کادر روشن)",
+                "The page effect runs on the whole home frame and the icons move with it (needs paged mode and frame on)"),
+              "hfFx", false, fg));
+
+            r.addView(sectionTitle(t("صفحات و افکت", "Pages and effects"), fg));
             // one page that scrolls down (on) or several pages that turn left and right (off)
             r.addView(toggleRowThen(0xFF26A69A, "↔", t("صفحات افقی", "Horizontal pages"),
               t("روشن: یک صفحه که به پایین اسکرول می‌شود. خاموش: چند صفحه که با کشیدن به چپ و راست می‌چرخند",
                 "On: one page that scrolls down. Off: several pages that turn left and right"),
               "hpScroll", true, fg, () -> { onPagesToggled(); show(); }));
-            // icon settings open right here, in lighter glass boxes
-            r.addView(toggleRow(0xFF7E57C2, "▣", t("افکت کادر", "Frame effect"),
-              t("افکت صفحه روی کل کادر صفحه اصلی اجرا می‌شود و آیکون‌ها با کادر جابجا می‌شوند (نیاز به صفحات افقی و کادر روشن)",
-                "The page effect runs on the whole home frame and the icons move with it (needs paged mode and frame on)"),
-              "hfFx", false, fg));
             if (pagedMode()) r.addView(transAnimGroup(fg));
+
+            r.addView(sectionTitle(t("آیکون", "Icons"), fg));
             r.addView(accordionGroupFaded(0xFFAB47BC, "🧩", t("آیکون", "Icon"), fg, 0.6f, () -> iconItems(fg)));
             return wrapScroll(r);
            }
@@ -7941,20 +8001,15 @@ jobs:
              }
             };
 
-            // everything about what the bubble does and its list lives on its own page
-            r.addView(row(0xFF00897B, "💬", t("عملکرد", "Actions"),
-              t("لانچر، عملکردها و ظاهر لیست حباب", "Launcher, actions and the look of the bubble list"),
-              0, fg, v -> {
-             page = BUB;
-             show();
-            }));
+            r.addView(sectionTitle(t("ظاهر", "Look"), fg));
             r.addView(accordionRow(0xFF2196F3, "📐", t("سایز حباب", "Bubble Size"), "mock_size", 30, 100, 56, " dp", fg, updateMock));
             r.addView(accordionRow(0xFF4CAF50, "💧", t("شفافیت حباب", "Bubble Opacity"), "mock_alpha", 20, 100, 90, "%", fg, updateMock));
             r.addView(accordionRow(0xFFFFB300, "⏱", t("سرعت", "Speed"), "mock_speed", 50, 2000, 2000, " ms", fg, updateMock));
             r.addView(accordionRow(0xFF5C6BC0, "🙈", t("نهان", "Hide"), "mock_hide", 30, 70, 68, "%", fg, updateMock));
+
+            r.addView(sectionTitle(t("محل و نمایش", "Position and display"), fg));
             r.addView(accordionRow(0xFF00ACC1, "↔", t("محل حباب (افقی)", "Bubble position (horizontal)"), "mock_px", 0, 100, 70, "%", fg, updateMock));
             r.addView(accordionRow(0xFF7E57C2, "↕", t("محل حباب (عمودی)", "Bubble position (vertical)"), "mock_py", 0, 100, 40, "%", fg, updateMock));
-
             boolean over = sp.getBoolean("mock_over", true);
             r.addView(row(0xFF9C27B0, "🔝", t("نمایش روی تمام برنامه‌ها", "Overlay Over Apps"),
               t("خاموش: حباب فقط روی صفحه لانچر دیده می‌شود", "Off: bubble is visible only on the launcher"),
@@ -7964,10 +8019,38 @@ jobs:
              show();
             }));
 
+            r.addView(sectionTitle(t("عملکرد", "Actions"), fg));
+            r.addView(row(0xFF00897B, "💬", t("عملکرد", "Actions"),
+              t("لانچر، عملکردها و ظاهر لیست حباب", "Launcher, actions and the look of the bubble list"),
+              0, fg, v -> {
+             page = BUB;
+             show();
+            }));
             return wrapScroll(r);
            }
 
            // ---------- bubble page ----------
+           // effects of the folder boxes (the columns after the first box of the action list and of the bubble moves)
+           static final String[] FXF_FA = {"بدون افکت", "محو شدن", "کشویی", "بزرگ شدن از حباب", "کرکره‌ای", "کشویی از بالا", "قطره‌ای (کش‌دار)", "کش افقی"};
+           static final String[] FXF_EN = {"No effect", "Fade", "Slide from the side", "Grow from the bubble", "Shutter", "Slide from the top", "Drop (stretchy)", "Horizontal stretch"};
+           static final int[] FXF_IDS = {0, 1, 2, 3, 4, 5, 6, 7};
+           static final int[] FXF_DOTS = {0xFF9E9E9E, 0xFF42A5F5, 0xFF26A69A, 0xFFFF7043, 0xFF8D6E63, 0xFF66BB6A, 0xFF29B6F6, 0xFFAB47BC};
+
+           View folderFxGroup(final int fg) {
+            final int cur = sp.getInt("bub_fxf", 0);
+            return accordionGroupFaded(0xFF26A69A, "🗂", t("افکت کادر پوشه‌ها", "Folder boxes effect"), fg, 0.6f, () -> {
+             View[] its = new View[FXF_IDS.length];
+             for (int i = 0; i < its.length; i++) {
+              final int k = i;
+              its[i] = row(FXF_DOTS[i], "✦", fa ? FXF_FA[i] : FXF_EN[i], null, cur == FXF_IDS[i] ? 1 : 0, fg, v -> {
+               sp.edit().putInt("bub_fxf", FXF_IDS[k]).apply();
+               show();
+              });
+             }
+             return its;
+            });
+           }
+
            View bubblePage(final int fg) {
             LinearLayout r = vbox();
             r.addView(topBar(t("عملکرد", "Actions"), fg));
@@ -8046,12 +8129,12 @@ jobs:
              final String[] fxNames = {
                t("بدون افکت", "No effect"), t("قطره‌ای (کش‌دار)", "Drop (stretchy)"), t("محو شدن", "Fade"),
                t("کشویی", "Slide from the side"), t("بزرگ شدن از حباب", "Grow from the bubble"),
-               t("کشویی از بالا", "Slide from the top")};
-             final int[] fxIds = {0, 6, 1, 2, 3, 5};
-             final int[] fxDots = {0xFF9E9E9E, 0xFF29B6F6, 0xFF42A5F5, 0xFF26A69A, 0xFFFF7043, 0xFF66BB6A};
-             r.addView(accordionGroupFaded(0xFF26A69A, "🎞", t("افکت کادر عملکرد", "Action box effect"), fg, 0.6f, () -> {
+               t("کرکره‌ای", "Shutter"), t("کشویی از بالا", "Slide from the top"), t("کش افقی", "Horizontal stretch")};
+             final int[] fxIds = {0, 6, 1, 2, 3, 4, 5, 7};
+             final int[] fxDots = {0xFF9E9E9E, 0xFF29B6F6, 0xFF42A5F5, 0xFF26A69A, 0xFFFF7043, 0xFF8D6E63, 0xFF66BB6A, 0xFFAB47BC};
+             r.addView(accordionGroupFaded(0xFF26A69A, "🎞", t("افکت کادر اصلی", "Main box effect"), fg, 0.6f, () -> {
               View[] its = new View[fxNames.length];
-              for (int i = 0; i < its.length; i++) {
+              for (int i = 0; i < fxNames.length; i++) {
                final int k = i;
                its[i] = row(fxDots[i], "✦", fxNames[i], null, fx == fxIds[i] ? 1 : 0, fg, v -> {
                 sp.edit().putInt("bub_fx", fxIds[k]).apply();
@@ -8060,7 +8143,19 @@ jobs:
               }
               return its;
              }));
-             r.addView(accordionRow(0xFFFFB300, "⏱", t("سرعت افکت کادر عملکرد", "Action box effect speed"), "bub_fxms", 100, 1500, 300, " ms", fg, null));
+             r.addView(folderFxGroup(fg));
+             r.addView(accordionGroupFaded(0xFF26A69A, "🫧", t("افکت حرکات حباب", "Bubble moves effect"), fg, 0.6f, () -> {
+              View[] its = new View[fxNames.length];
+              for (int i = 0; i < its.length; i++) {
+               final int k = i;
+               its[i] = row(fxDots[i], "✦", fxNames[i], null, sp.getInt("bub_fxs", 6) == fxIds[i] ? 1 : 0, fg, v -> {
+                sp.edit().putInt("bub_fxs", fxIds[k]).apply();
+                show();
+               });
+              }
+              return its;
+             }));
+             r.addView(accordionRow(0xFFFFB300, "⏱", t("سرعت افکت ها", "Effect speed"), "bub_fxms", 100, 1500, 300, " ms", fg, null));
             }
             return wrapScroll(r);
            }
@@ -8887,21 +8982,24 @@ jobs:
 
            // step 1: which app
            void actPickApp(final int slot) {
-            PackageManager pm = getPackageManager();
-            Intent q = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-            Set<String> seen = new HashSet<>();
-            final List<String[]> l = new ArrayList<>();
-            for (ResolveInfo ri : pm.queryIntentActivities(q, 0)) {
-             String p = ri.activityInfo.packageName;
-             if (p.equals(getPackageName()) || !seen.add(p)) continue;
-             l.add(new String[]{ri.loadLabel(pm).toString(), p});
-            }
-            Collections.sort(l, (x, y) -> x[0].compareToIgnoreCase(y[0]));
-            CharSequence[] names = new CharSequence[l.size()];
-            for (int i = 0; i < names.length; i++) names[i] = l.get(i)[0];
-            new AlertDialog.Builder(this).setTitle(t("انتخاب برنامه", "Choose app"))
-              .setItems(names, (d, w) -> actAskName(slot, l.get(w)[1], l.get(w)[0], l.get(w)[0], false))
-              .setNegativeButton(t("لغو", "Cancel"), null).show();
+            multiAppPicker(pkgs -> chooseWin(win -> {
+             BubbleActs.Act[] acts = BubbleActs.load(sp);
+             List<Integer> empties = new ArrayList<>();
+             for (int k = 0; k < acts.length; k++) { int i = (slot + k) % acts.length; if (acts[i] == null) empties.add(i); }
+             int e = 0;
+             for (String pkg : pkgs) {
+              if (e >= empties.size()) break;
+              BubbleActs.Act a = new BubbleActs.Act();
+              a.pkg = pkg;
+              a.type = "app";
+              a.id = win;
+              a.label = "popup".equals(win) ? t("باز شدن در پاپ آپ", "Open in popup") : t("باز شدن کامل", "Open full");
+              a.ts = System.currentTimeMillis();
+              acts[empties.get(e++)] = a;
+             }
+             BubbleActs.save(sp, acts);
+             show();
+            }));
            }
 
            // step 2: the name this action gets in the bubble list
@@ -9330,8 +9428,13 @@ jobs:
             r.addView(topBar(t("داک", "Dock"), fg));
 
             boolean on1 = sp.getBoolean("dockOn1", true);
+            r.addView(sectionTitle(t("نمایش", "Show"), fg));
             r.addView(row(0xFF8E24AA, "👁", t("نمایش", "Show"), null, on1 ? 3 : 2, fg,
               v -> { sp.edit().putBoolean("dockOn1", !on1).apply(); show(); }));
+            r.addView(row(0xFF5C6BC0, "🎨", t("پس‌زمینه داک", "Dock background"), null, 0, fg,
+              v -> { page = DOCKBG; show(); }));
+
+            r.addView(sectionTitle(t("آیکون", "Icons"), fg));
             // icon: name on/off, icon size, icon name size (glass boxes, a little fainter)
             r.addView(accordionGroupFaded(0xFF00CCD6, "📱", t("آیکون", "Icon"), fg, 0.6f, () -> new View[]{
               toggleRow(0xFF7E57C2, "🏷", t("اسم آیکون", "Icon name"),
@@ -9339,8 +9442,8 @@ jobs:
                 "hideDockNames", false, fg),
               accordionRow(0xFF00CCD6, "📱", t("سایز آیکون", "Icon size"), "dockI1", 24, 64, 52, " dp", fg, null),
               accordionRow(0xFFFFB300, "🔤", t("سایز اسم آیکون", "Icon name size"), "dockTs1", 6, 20, 10, " sp", fg, null)}));
-            r.addView(row(0xFF5C6BC0, "🎨", t("پس‌زمینه داک", "Dock background"), null, 0, fg,
-              v -> { page = DOCKBG; show(); }));
+
+            r.addView(sectionTitle(t("چیدمان", "Layout"), fg));
             r.addView(accordionRow(0xFF2196F3, "🔢", t("تعداد اپلیکیشن", "Apps count"), "dockCount1", 4, 10, 4, "", fg, null));
             r.addView(accordionRow(0xFF4CAF50, "📄", t("تعداد صفحه", "Pages count"), "dockPages1", 1, 5, 1, "", fg, null));
             // dock position: positive = up (mm), 0 = now, -1 = lowest (touching the navigation keys)
