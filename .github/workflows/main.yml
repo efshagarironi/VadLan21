@@ -446,18 +446,16 @@ jobs:
          if (!t.isEmpty()) Vault.capture(this, t);
          return;
         }
-        Toast.makeText(this, "Vault: copy seen", Toast.LENGTH_SHORT).show();
         vOverlayGrab();
        } catch (Throwable e) { }
       }
 
       void copyHint() {
        try {
-        Toast.makeText(this, "Vault: copy button seen", Toast.LENGTH_SHORT).show();
         h.postDelayed(new Runnable() {
          @Override
          public void run() { vOverlayGrab(); }
-        }, 200);
+        }, 60);
        } catch (Throwable e) { }
       }
 
@@ -1617,6 +1615,8 @@ jobs:
       private static long seq = 0;
       private static final ExecutorService io = Executors.newSingleThreadExecutor();
 
+      static volatile String lastCapText = "";
+      static volatile long lastCapAt = 0;
       static volatile String selfCopy = "";
       static volatile long selfAt = 0;
 
@@ -1803,6 +1803,10 @@ jobs:
        String s = t.trim();
        if (s.isEmpty()) return;
        if (s.equals(selfCopy) && SystemClock.uptimeMillis() - selfAt < 4000) return;
+       long nowU = SystemClock.uptimeMillis();
+       if (s.equals(lastCapText) && nowU - lastCapAt < 6000) return;
+       lastCapText = s;
+       lastCapAt = nowU;
        if (add(c, s)) MockBubbleService.magnet();
       }
 
@@ -1928,9 +1932,11 @@ jobs:
          }
         } catch (Throwable ex) { }
        }
-       if (t == null) return;
-       t = t.trim();
-       if (t.length() < 2 || t.length() > 5000) return;
+       if (t != null) t = t.trim();
+       if (t == null || t.length() < 2 || t.length() > 5000) {
+        try { android.widget.Toast.makeText(c, "Vault: long-press, no text found", android.widget.Toast.LENGTH_SHORT).show(); } catch (Throwable ex) { }
+        return;
+       }
        capture(c, t);
       }
      }
