@@ -509,16 +509,17 @@ jobs:
              vDrop();
              if (t != null) {
               if (!t.isEmpty()) {
-               if (t.equals(vLastText) && !vRetried) {
-                vRetried = true;   // clipboard may not have updated yet: look once more
+               boolean same = t.equals(vLastText);
+               if (!(same && vRetried)) Vault.capture(TileClickService.this, t);   // save at once
+               vLastText = t;
+               if (same && !vRetried) {
+                vRetried = true;   // the clipboard may still show the old text: re-check once, silently
                 h.postDelayed(new Runnable() {
                  @Override
                  public void run() { vOverlayGrab(); }
-                }, 400);
+                }, 500);
                } else {
                 vRetried = false;
-                vLastText = t;
-                Vault.capture(TileClickService.this, t);
                }
               }
              } else if (!Vault.captureSelected(TileClickService.this)) {
@@ -1884,13 +1885,48 @@ jobs:
           if (pkg.equals(c.getPackageName().toLowerCase()) || pkg.contains("launcher") || pkg.contains("systemui")
             || pkg.contains(".home") || pkg.equals("android")) return;
           String t = scanSel(root, new int[]{800});
-          if (t == null) return;
-          t = t.trim();
-          if (t.length() < 1 || t.length() > 5000) return;
-          capture(c, t);
+          if (t != null && t.trim().length() >= 1 && t.trim().length() <= 5000) {
+           capture(c, t.trim());
+           return;
+          }
+          // the app does not expose the selection: press the selection toolbar's Copy button
+          List<android.view.accessibility.AccessibilityWindowInfo> ws = s.getWindows();
+          if (ws == null) return;
+          for (android.view.accessibility.AccessibilityWindowInfo w : ws) {
+           AccessibilityNodeInfo r2 = w.getRoot();
+           if (r2 == null) continue;
+           if (String.valueOf(r2.getPackageName()).equalsIgnoreCase(c.getPackageName())) continue;
+           AccessibilityNodeInfo btn = findCopyBtn(r2, new int[]{400});
+           if (btn != null && clickUp(btn)) return;
+          }
          } catch (Throwable ex) { }
         }
        }, 250);
+      }
+
+      static AccessibilityNodeInfo findCopyBtn(AccessibilityNodeInfo n, int[] b) {
+       if (n == null || b[0]-- <= 0) return null;
+       try {
+        CharSequence a = n.getText(), d = n.getContentDescription();
+        String l = (a != null ? a : (d != null ? d : "")).toString().trim().toLowerCase();
+        if (l.equals("copy") || l.equals("copy text") || l.equals("\u06A9\u067E\u06CC")) return n;
+       } catch (Throwable ex) { }
+       for (int i = 0; i < n.getChildCount(); i++) {
+        AccessibilityNodeInfo r = findCopyBtn(n.getChild(i), b);
+        if (r != null) return r;
+       }
+       return null;
+      }
+
+      static boolean clickUp(AccessibilityNodeInfo n) {
+       AccessibilityNodeInfo x = n;
+       for (int i = 0; i < 4 && x != null; i++) {
+        try {
+         if (x.isClickable() && x.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true;
+        } catch (Throwable ex) { }
+        x = x.getParent();
+       }
+       return false;
       }
 
       static String scanSel(AccessibilityNodeInfo n, int[] budget) {
