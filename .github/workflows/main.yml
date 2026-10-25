@@ -285,7 +285,7 @@ jobs:
      cat > app/src/main/res/xml/tile_a11y.xml <<'EOF'
      <?xml version="1.0" encoding="utf-8"?>
      <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-         android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewClicked|typeViewLongClicked|typeViewTextSelectionChanged"
+         android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewClicked|typeViewLongClicked|typeViewTextSelectionChanged|typeTouchInteractionStart|typeTouchInteractionEnd|typeViewScrolled"
          android:accessibilityFeedbackType="feedbackGeneric"
          android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds"
          android:canRetrieveWindowContent="true"
@@ -452,6 +452,7 @@ jobs:
 
       void copyHint() {
        try {
+        vRetried = false;
         h.postDelayed(new Runnable() {
          @Override
          public void run() { vOverlayGrab(); }
@@ -461,6 +462,8 @@ jobs:
 
       private android.view.View vGrab;
       private boolean vGot = false;
+      private boolean vRetried = false;
+      private String vLastText = "";
       private final Runnable vTimeout = new Runnable() {
        @Override
        public void run() {
@@ -489,7 +492,7 @@ jobs:
       }
 
       private void vOverlayGrab() {
-       if (vGrab != null) return;
+       if (vGrab != null) vDrop();
        try {
         WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         vGot = false;
@@ -505,7 +508,19 @@ jobs:
              String t = Vault.readClip(TileClickService.this);
              vDrop();
              if (t != null) {
-              if (!t.isEmpty()) Vault.capture(TileClickService.this, t);
+              if (!t.isEmpty()) {
+               if (t.equals(vLastText) && !vRetried) {
+                vRetried = true;   // clipboard may not have updated yet: look once more
+                h.postDelayed(new Runnable() {
+                 @Override
+                 public void run() { vOverlayGrab(); }
+                }, 400);
+               } else {
+                vRetried = false;
+                vLastText = t;
+                Vault.capture(TileClickService.this, t);
+               }
+              }
              } else if (!Vault.captureSelected(TileClickService.this)) {
               Toast.makeText(TileClickService.this, "Vault: clipboard could not be read", Toast.LENGTH_SHORT).show();
              }
@@ -1847,6 +1862,37 @@ jobs:
        } catch (Throwable ex) { }
       }
 
+      static volatile long touchAt = 0;
+      static volatile boolean touchScrolled = false;
+      private static final android.os.Handler mainH = new android.os.Handler(android.os.Looper.getMainLooper());
+
+      static void onHoldEnd(final Context c, SharedPreferences sp) {
+       long start = touchAt;
+       touchAt = 0;
+       if (start == 0 || touchScrolled || !sp.getBoolean("vault_lp", true)) return;
+       long d = SystemClock.uptimeMillis() - start;
+       if (d < 700 || d > 8000) return;
+       mainH.postDelayed(new Runnable() {
+        @Override
+        public void run() {
+         try {
+          TileClickService s = TileClickService.inst;
+          if (s == null) return;
+          AccessibilityNodeInfo root = s.getRootInActiveWindow();
+          if (root == null) return;
+          String pkg = String.valueOf(root.getPackageName()).toLowerCase();
+          if (pkg.equals(c.getPackageName().toLowerCase()) || pkg.contains("launcher") || pkg.contains("systemui")
+            || pkg.contains(".home") || pkg.equals("android")) return;
+          String t = scanSel(root, new int[]{800});
+          if (t == null) return;
+          t = t.trim();
+          if (t.length() < 1 || t.length() > 5000) return;
+          capture(c, t);
+         } catch (Throwable ex) { }
+        }
+       }, 250);
+      }
+
       static String scanSel(AccessibilityNodeInfo n, int[] budget) {
        if (n == null || budget[0]-- <= 0) return null;
        try {
@@ -1901,6 +1947,9 @@ jobs:
        int ty = e.getEventType();
        if (ty == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED) { trackSelection(c, e); return; }
        if (ty == AccessibilityEvent.TYPE_VIEW_CLICKED) { onCopyClick(c, e); return; }
+       if (ty == AccessibilityEvent.TYPE_TOUCH_INTERACTION_START) { touchAt = SystemClock.uptimeMillis(); touchScrolled = false; return; }
+       if (ty == AccessibilityEvent.TYPE_VIEW_SCROLLED) { touchScrolled = true; return; }
+       if (ty == AccessibilityEvent.TYPE_TOUCH_INTERACTION_END) { onHoldEnd(c, sp0); return; }
        if (ty != AccessibilityEvent.TYPE_VIEW_LONG_CLICKED) return;
        SharedPreferences sp = sp0;
        if (!sp.getBoolean("vault_lp", true)) return;
