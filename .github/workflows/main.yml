@@ -285,7 +285,7 @@ jobs:
      cat > app/src/main/res/xml/tile_a11y.xml <<'EOF'
      <?xml version="1.0" encoding="utf-8"?>
      <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-         android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewClicked|typeViewLongClicked"
+         android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewClicked|typeViewLongClicked|typeViewTextSelectionChanged"
          android:accessibilityFeedbackType="feedbackGeneric"
          android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds"
          android:canRetrieveWindowContent="true"
@@ -1705,10 +1705,60 @@ jobs:
        return null;
       }
 
+      static volatile String selText = "";
+      static volatile long selAt = 0;
+
+      static void trackSelection(Context c, AccessibilityEvent e) {
+       try {
+        String pkg = String.valueOf(e.getPackageName());
+        if (pkg.equals(c.getPackageName())) return;
+        CharSequence full = null;
+        AccessibilityNodeInfo n = e.getSource();
+        if (n != null) full = n.getText();
+        if (full == null && e.getText() != null && !e.getText().isEmpty()) full = e.getText().get(0);
+        if (full == null) return;
+        int a = e.getFromIndex(), b = e.getToIndex();
+        if (n != null && a == b) { a = n.getTextSelectionStart(); b = n.getTextSelectionEnd(); }
+        int lo = Math.min(a, b), hi = Math.max(a, b);
+        if (lo < 0 || hi > full.length() || hi - lo < 1) return;
+        String sel = full.subSequence(lo, hi).toString().trim();
+        if (sel.isEmpty() || sel.length() > MAX_LEN) return;
+        selText = sel;
+        selAt = SystemClock.uptimeMillis();
+       } catch (Throwable ex) { }
+      }
+
+      static boolean isCopyLabel(String x) {
+       if (x == null) return false;
+       String l = x.trim().toLowerCase();
+       if (l.isEmpty() || l.length() > 24) return false;
+       return l.equals("copy") || l.startsWith("copy ") || l.equals("copy text") || l.contains("کپی") || l.contains("رونوشت");
+      }
+
+      static void onCopyClick(Context c, AccessibilityEvent e) {
+       try {
+        AccessibilityNodeInfo n = e.getSource();
+        String lab = n == null ? null : nodeText(n, 1);
+        if (lab == null && e.getContentDescription() != null) lab = e.getContentDescription().toString();
+        if (lab == null && e.getText() != null && !e.getText().isEmpty()) lab = String.valueOf(e.getText().get(0));
+        if (!isCopyLabel(lab)) return;
+        if (selText.isEmpty() || SystemClock.uptimeMillis() - selAt > 30000) return;
+        String t = selText;
+        selText = "";
+        capture(c, t);
+       } catch (Throwable ex) { }
+      }
+
       static void onA11y(Context c, AccessibilityEvent e) {
-       if (e == null || e.getEventType() != AccessibilityEvent.TYPE_VIEW_LONG_CLICKED) return;
-       SharedPreferences sp = c.getSharedPreferences("l", 0);
-       if (!sp.getBoolean("vault_on", false) || !sp.getBoolean("vault_lp", true)) return;
+       if (e == null) return;
+       SharedPreferences sp0 = c.getSharedPreferences("l", 0);
+       if (!sp0.getBoolean("vault_on", false)) return;
+       int ty = e.getEventType();
+       if (ty == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED) { trackSelection(c, e); return; }
+       if (ty == AccessibilityEvent.TYPE_VIEW_CLICKED) { onCopyClick(c, e); return; }
+       if (ty != AccessibilityEvent.TYPE_VIEW_LONG_CLICKED) return;
+       SharedPreferences sp = sp0;
+       if (!sp.getBoolean("vault_lp", true)) return;
        String pkg = String.valueOf(e.getPackageName()).toLowerCase();
        if (pkg.equals(c.getPackageName().toLowerCase()) || pkg.contains("launcher") || pkg.contains("systemui")
          || pkg.contains(".home") || pkg.equals("android")) return;
@@ -3105,6 +3155,7 @@ jobs:
         try {
          String t = Vault.readClip(this);
          if (t != null) Vault.capture(this, t);
+         else android.widget.Toast.makeText(this, "Vault: clipboard could not be read", android.widget.Toast.LENGTH_SHORT).show();
         } catch (Throwable e) { }
         finish();
         overridePendingTransition(0, 0);
