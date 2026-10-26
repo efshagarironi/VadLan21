@@ -287,7 +287,7 @@ jobs:
      <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
          android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewClicked|typeViewLongClicked|typeViewTextSelectionChanged|typeTouchInteractionStart|typeTouchInteractionEnd|typeViewScrolled"
          android:accessibilityFeedbackType="feedbackGeneric"
-         android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds"
+         android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds|flagIncludeNotImportantViews"
          android:canRetrieveWindowContent="true"
          android:canTakeScreenshot="true"
          android:description="@string/a11y_desc"
@@ -509,10 +509,10 @@ jobs:
              vDrop();
              if (t != null) {
               if (!t.isEmpty()) {
-               boolean same = t.equals(vLastText);
-               if (!(same && vRetried)) Vault.capture(TileClickService.this, t);   // save at once
+               boolean fresh = Vault.clipIsNew(TileClickService.this);
+               if (fresh) Vault.capture(TileClickService.this, t);   // save at once
                vLastText = t;
-               if (same && !vRetried) {
+               if (!fresh && !vRetried) {
                 vRetried = true;   // the clipboard may still show the old text: re-check once, silently
                 h.postDelayed(new Runnable() {
                  @Override
@@ -1734,8 +1734,19 @@ jobs:
        if (t.length() > MAX_LEN) t = t.substring(0, MAX_LEN);
        long now = System.currentTimeMillis();
        Item found = null;
+       String nt = t.replaceAll("\\s+", " ").trim();
        for (Item it : items) {
-        if (it.text.equals(t)) { found = it; break; }
+        if (it.text.replaceAll("\\s+", " ").trim().equals(nt)) { found = it; break; }
+       }
+       if (found == null && !items.isEmpty()) {
+        Item top = items.get(0);
+        String nr = top.text.replaceAll("\\s+", " ").trim();
+        if (!top.pin && now - top.time < 6000 && (nr.contains(nt) || nt.contains(nr))) {
+         if (nt.length() > nr.length()) { top.text = t; top.kind = kindOf(t); }
+         top.time = now;
+         saveAsync(c);
+         return true;
+        }
        }
        if (found != null) {
         items.remove(found);
@@ -1929,6 +1940,21 @@ jobs:
        return false;
       }
 
+      static volatile long lastTs = 0;
+
+      static boolean clipIsNew(Context c) {
+       try {
+        ClipboardManager cm = (ClipboardManager) c.getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipDescription d = cm.getPrimaryClipDescription();
+        long ts = d == null ? 0 : d.getTimestamp();
+        if (ts == 0) return true;
+        if (ts == lastTs) return false;
+        if (System.currentTimeMillis() - ts > 8000) return false;
+        lastTs = ts;
+        return true;
+       } catch (Throwable ex) { return true; }
+      }
+
       static String scanSel(AccessibilityNodeInfo n, int[] budget) {
        if (n == null || budget[0]-- <= 0) return null;
        try {
@@ -1966,10 +1992,21 @@ jobs:
       static void onCopyClick(Context c, AccessibilityEvent e) {
        try {
         AccessibilityNodeInfo n = e.getSource();
-        String lab = n == null ? null : nodeText(n, 1);
-        if (lab == null && e.getContentDescription() != null) lab = e.getContentDescription().toString();
-        if (lab == null && e.getText() != null && !e.getText().isEmpty()) lab = String.valueOf(e.getText().get(0));
-        if (!isCopyLabel(lab)) return;
+        boolean hit = false;
+        if (n != null) hit = isCopyLabel(nodeText(n, 1));
+        AccessibilityNodeInfo cur = n;
+        for (int i = 0; i < 4 && cur != null && !hit; i++) {
+         String id = cur.getViewIdResourceName();
+         if (id != null && id.toLowerCase().contains("copy")) hit = true;
+         CharSequence own = cur.getContentDescription();
+         if (!hit && own != null && isCopyLabel(own.toString())) hit = true;
+         CharSequence tx = cur.getText();
+         if (!hit && tx != null && isCopyLabel(tx.toString())) hit = true;
+         cur = cur.getParent();
+        }
+        if (!hit && e.getContentDescription() != null) hit = isCopyLabel(e.getContentDescription().toString());
+        if (!hit && e.getText() != null && !e.getText().isEmpty()) hit = isCopyLabel(String.valueOf(e.getText().get(0)));
+        if (!hit) return;
         captureSelected(c);
         TileClickService ts = TileClickService.inst;
         if (ts != null) ts.copyHint();
