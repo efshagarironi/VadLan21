@@ -112,6 +112,12 @@ jobs:
                  android:noHistory="true"
                  android:taskAffinity=""
                  android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+             <activity
+                 android:name=".VaultImgActivity"
+                 android:exported="false"
+                 android:excludeFromRecents="true"
+                 android:taskAffinity=""
+                 android:theme="@android:style/Theme.Translucent.NoTitleBar" />
              <service
                  android:name=".VadTile"
                  android:enabled="false"
@@ -285,7 +291,7 @@ jobs:
      cat > app/src/main/res/xml/tile_a11y.xml <<'EOF'
      <?xml version="1.0" encoding="utf-8"?>
      <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-         android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewClicked|typeViewLongClicked|typeViewTextSelectionChanged|typeTouchInteractionStart|typeTouchInteractionEnd|typeViewScrolled"
+         android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewClicked|typeViewLongClicked|typeViewTextSelectionChanged|typeNotificationStateChanged|typeTouchInteractionStart|typeTouchInteractionEnd|typeViewScrolled"
          android:accessibilityFeedbackType="feedbackGeneric"
          android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds|flagIncludeNotImportantViews"
          android:canRetrieveWindowContent="true"
@@ -1615,6 +1621,13 @@ jobs:
 
      public class Vault {
       static final int MAX = 700;
+
+      static int limit(Context c) {
+       try {
+        int v = c.getSharedPreferences("l", 0).getInt("vault_max", MAX);
+        return Math.max(500, Math.min(2000, v));
+       } catch (Throwable e) { return MAX; }
+      }
       static final int MAX_LEN = 20000;
       static final int K_TEXT = 0, K_LINK = 1, K_NUM = 2;
 
@@ -1761,7 +1774,7 @@ jobs:
         n.kind = kindOf(t);
         items.add(0, n);
        }
-       while (items.size() > MAX) {
+       while (items.size() > limit(c)) {
         int rm = -1;
         for (int i = items.size() - 1; i >= 0; i--) {
          if (!items.get(i).pin) { rm = i; break; }
@@ -1985,8 +1998,66 @@ jobs:
       static boolean isCopyLabel(String x) {
        if (x == null) return false;
        String l = x.trim().toLowerCase();
-       if (l.isEmpty() || l.length() > 24) return false;
-       return l.equals("copy") || l.startsWith("copy ") || l.equals("copy text") || l.contains("کپی") || l.contains("رونوشت");
+       if (l.isEmpty() || l.length() > 40) return false;
+       return l.matches(".*\\bcopy\\b.*") || l.contains("کپی") || l.contains("رونوشت") || l.contains("نسخ");
+      }
+
+      static volatile long toastAt = 0;
+
+      static void onCopyToast(Context c, AccessibilityEvent e) {
+       try {
+        String pkg = String.valueOf(e.getPackageName()).toLowerCase();
+        if (pkg.equals(c.getPackageName().toLowerCase())) return;
+        String cls = String.valueOf(e.getClassName()).toLowerCase();
+        StringBuilder sb = new StringBuilder();
+        if (e.getText() != null) for (CharSequence cs : e.getText()) if (cs != null) sb.append(cs).append(' ');
+        if (e.getContentDescription() != null) sb.append(e.getContentDescription());
+        String tx = sb.toString().toLowerCase();
+        boolean words = tx.length() <= 80 && (tx.contains("copied") || tx.contains("clipboard") || tx.contains("کپی")
+          || tx.contains("کلیپ") || tx.contains("رونوشت"));
+        boolean hit;
+        if (e.getEventType() == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) hit = cls.contains("toast") && words;
+        else hit = cls.contains("clipboard") || pkg.contains("clipboard") || (pkg.contains("systemui") && words);
+        if (!hit) return;
+        long now = SystemClock.uptimeMillis();
+        if (now - toastAt < 800) return;
+        toastAt = now;
+        TileClickService ts = TileClickService.inst;
+        if (ts != null) ts.copyHint();
+       } catch (Throwable ex) { }
+      }
+
+      static void holdLater(final Context c) {
+       mainH.postDelayed(new Runnable() {
+        @Override
+        public void run() { holdFallback(c); }
+       }, 350);
+      }
+
+      static void holdFallback(Context c) {
+       try {
+        TileClickService s = TileClickService.inst;
+        if (s == null) return;
+        AccessibilityNodeInfo root = s.getRootInActiveWindow();
+        if (root == null) return;
+        String pkg = String.valueOf(root.getPackageName()).toLowerCase();
+        if (pkg.equals(c.getPackageName().toLowerCase()) || pkg.contains("launcher") || pkg.contains("systemui")
+          || pkg.contains(".home") || pkg.equals("android")) return;
+        String t = scanSel(root, new int[]{800});
+        if (t != null && t.trim().length() >= 1 && t.trim().length() <= 5000) {
+         capture(c, t.trim());
+         return;
+        }
+        List<android.view.accessibility.AccessibilityWindowInfo> ws = s.getWindows();
+        if (ws == null) return;
+        for (android.view.accessibility.AccessibilityWindowInfo w : ws) {
+         AccessibilityNodeInfo r2 = w.getRoot();
+         if (r2 == null) continue;
+         if (String.valueOf(r2.getPackageName()).equalsIgnoreCase(c.getPackageName())) continue;
+         AccessibilityNodeInfo btn = findCopyBtn(r2, new int[]{400});
+         if (btn != null && clickUp(btn)) return;
+        }
+       } catch (Throwable ex) { }
       }
 
       static void onCopyClick(Context c, AccessibilityEvent e) {
@@ -2020,6 +2091,7 @@ jobs:
        int ty = e.getEventType();
        if (ty == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED) { trackSelection(c, e); return; }
        if (ty == AccessibilityEvent.TYPE_VIEW_CLICKED) { onCopyClick(c, e); return; }
+       if (ty == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED || ty == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) { onCopyToast(c, e); return; }
        if (ty == AccessibilityEvent.TYPE_TOUCH_INTERACTION_START) { touchAt = SystemClock.uptimeMillis(); touchScrolled = false; return; }
        if (ty == AccessibilityEvent.TYPE_VIEW_SCROLLED) { touchScrolled = true; return; }
        if (ty == AccessibilityEvent.TYPE_TOUCH_INTERACTION_END) { onHoldEnd(c, sp0); return; }
@@ -2056,7 +2128,7 @@ jobs:
        }
        if (t != null) t = t.trim();
        if (t == null || t.length() < 2 || t.length() > 5000) {
-        try { android.widget.Toast.makeText(c, "Vault: long-press, no text found", android.widget.Toast.LENGTH_SHORT).show(); } catch (Throwable ex) { }
+        holdLater(c);
         return;
        }
        capture(c, t);
@@ -2080,7 +2152,14 @@ jobs:
      import android.graphics.Paint;
      import android.graphics.Path;
      import android.graphics.PixelFormat;
+     import android.graphics.Bitmap;
+     import android.graphics.BitmapFactory;
+     import android.graphics.ColorFilter;
+     import android.graphics.Outline;
+     import android.graphics.Rect;
      import android.graphics.RectF;
+     import android.graphics.drawable.Drawable;
+     import android.widget.HorizontalScrollView;
      import android.graphics.SweepGradient;
      import android.graphics.Typeface;
      import android.graphics.drawable.ColorDrawable;
@@ -2310,6 +2389,126 @@ jobs:
        return g;
       }
 
+      private boolean bgPage = false;
+      private Bitmap bgBmp;
+      private boolean bgBmpTried;
+
+      static class FrameBg extends Drawable {
+       private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+       private final Paint ip = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+       private final Path path = new Path();
+       private final RectF rf = new RectF();
+       private final RectF dst = new RectF();
+       private final int color, fade, zoom, px, py;
+       private final Bitmap bmp;
+       private final float radius, strokeW;
+
+       FrameBg(int color, Bitmap bmp, int fade, int zoom, int px, int py, float radius, float strokeW) {
+        this.color = color;
+        this.bmp = bmp;
+        this.fade = fade;
+        this.zoom = zoom;
+        this.px = px;
+        this.py = py;
+        this.radius = radius;
+        this.strokeW = strokeW;
+       }
+
+       @Override
+       public void draw(Canvas c) {
+        Rect b = getBounds();
+        if (b.isEmpty()) return;
+        rf.set(b);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(color);
+        c.drawRoundRect(rf, radius, radius, p);
+        if (bmp != null && !bmp.isRecycled()) {
+         c.save();
+         path.reset();
+         path.addRoundRect(rf, radius, radius, Path.Direction.CW);
+         c.clipPath(path);
+         float sc = Math.max(rf.width() / bmp.getWidth(), rf.height() / bmp.getHeight()) * Math.max(100, zoom) / 100f;
+         float dw = bmp.getWidth() * sc, dh = bmp.getHeight() * sc;
+         float l = rf.left + (rf.width() - dw) * px / 100f;
+         float t = rf.top + (rf.height() - dh) * py / 100f;
+         dst.set(l, t, l + dw, t + dh);
+         ip.setAlpha(255 * (100 - fade) / 100);
+         c.drawBitmap(bmp, null, dst, ip);
+         c.restore();
+        }
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(strokeW);
+        p.setColor(0x22000000);
+        c.drawRoundRect(rf, radius, radius, p);
+       }
+
+       @Override
+       public void getOutline(Outline o) { o.setRoundRect(getBounds(), radius); }
+
+       @Override
+       public void setAlpha(int a) { }
+
+       @Override
+       public void setColorFilter(ColorFilter f) { }
+
+       @Override
+       public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+      }
+
+      private Bitmap bgBitmap() {
+       if (!sp.getBoolean("vault_bgImg", false)) return null;
+       if (bgBmp == null && !bgBmpTried) {
+        bgBmpTried = true;
+        try {
+         java.io.File f = new java.io.File(ctx.getFilesDir(), "vault_bg.jpg");
+         if (f.exists()) {
+          BitmapFactory.Options o = new BitmapFactory.Options();
+          o.inJustDecodeBounds = true;
+          BitmapFactory.decodeFile(f.getAbsolutePath(), o);
+          int ss = 1;
+          while (Math.max(o.outWidth, o.outHeight) / ss > 1400) ss *= 2;
+          BitmapFactory.Options o2 = new BitmapFactory.Options();
+          o2.inSampleSize = ss;
+          bgBmp = BitmapFactory.decodeFile(f.getAbsolutePath(), o2);
+         }
+        } catch (Throwable e) { bgBmp = null; }
+       }
+       return bgBmp;
+      }
+
+      private boolean hasBg() { return sp.contains("vault_bgc") || bgBitmap() != null; }
+
+      private int bgColor() { return sp.contains("vault_bgc") ? sp.getInt("vault_bgc", 0) : cardColor(); }
+
+      private boolean darkBg() {
+       if (!hasBg()) return false;
+       int c = bgColor();
+       if (Color.alpha(c) < 110 && bgBitmap() == null) return false;
+       double l = (0.299 * Color.red(c) + 0.587 * Color.green(c) + 0.114 * Color.blue(c)) / 255.0;
+       return l < 0.45;
+      }
+
+      private int ink() { return darkBg() ? 0xFFF2F4FA : 0xFF1B1F3B; }
+
+      private int subInk() { return darkBg() ? 0xFFB8BED6 : 0xFF6B7190; }
+
+      private int panelFill() { return !hasBg() ? panelColor() : (darkBg() ? 0x2EFFFFFF : 0x59FFFFFF); }
+
+      private Drawable frameDrawable() {
+       if (!hasBg()) {
+        GradientDrawable g = rr(cardColor(), 26);
+        g.setStroke(dp(1), 0x22000000);
+        return g;
+       }
+       return new FrameBg(bgColor(), bgBitmap(), sp.getInt("vault_bgFade", 0), sp.getInt("vault_bgZoom", 100),
+         sp.getInt("vault_bgPx", 50), sp.getInt("vault_bgPy", 50), dp(26), Math.max(1, dp(1)));
+      }
+
+      private void applyFrame() {
+       if (root != null) root.setBackground(frameDrawable());
+       if (listPane != null) listPane.setBackground(rr(panelFill(), 20));
+      }
+
       private int cardColor() { return Color.argb(alphaPct * 255 / 100, 255, 255, 255); }
 
       private int panelColor() { return Color.argb(alphaPct * 255 / 100, 245, 247, 252); }
@@ -2472,6 +2671,7 @@ jobs:
 
       private void back() {
        if (menuLayer != null) { closeMenu(); return; }
+       if (bgPage) { openSettings(); return; }
        if (page != P_MAIN) { goMain(); return; }
        dismiss(true);
       }
@@ -2524,9 +2724,9 @@ jobs:
       private void build() {
        root = new Root(ctx);
        root.setLayoutDirection(fa ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
-       GradientDrawable bg = rr(cardColor(), 26);
-       bg.setStroke(dp(1), 0x22000000);
-       root.setBackground(bg);
+       bgBmp = null;
+       bgBmpTried = false;
+       root.setBackground(frameDrawable());
        root.setClipToOutline(true);
        LinearLayout col = new LinearLayout(ctx);
        col.setOrientation(LinearLayout.VERTICAL);
@@ -2597,7 +2797,7 @@ jobs:
 
       private void buildHeader() {
        header.removeAllViews();
-       header.addView(circleBtn("\u2715", 0, 0xFF3A3F5C, 36, v -> dismiss(true)));
+       header.addView(circleBtn("\u2715", 0, ink(), 36, v -> dismiss(true)));
        if (page == P_MAIN || page == P_SEARCH) {
         if (!sel.isEmpty()) {
          header.addView(trashPill());
@@ -2612,9 +2812,9 @@ jobs:
         }
        } else {
         String title;
-        if (page == P_SET) title = "\u2699  " + t("تنظیمات", "Settings");
+        if (page == P_SET) title = bgPage ? "\uD83C\uDFA8  " + t("پس‌زمینه", "Background") : "\u2699  " + t("تنظیمات", "Settings");
         else title = (cur != null ? kindGlyph(cur) + "  " + preview(cur.text, 40) : "");
-        TextView tt = tv(title, 15, 0xFF1B1F3B, true);
+        TextView tt = tv(title, 15, ink(), true);
         tt.setSingleLine(true);
         tt.setEllipsize(TextUtils.TruncateAt.END);
         tt.setGravity(Gravity.CENTER_VERTICAL);
@@ -2653,7 +2853,7 @@ jobs:
        footer.removeAllViews();
        footer.addView(circleBtn("\u2611", 0, accent, 34, v -> selectAll()));
        footer.addView(circleBtn("\uD83D\uDD0D", 0, accent, 34, v -> openSearch()));
-       countTv = tv("", 11.5f, 0xFF6B7190, false);
+       countTv = tv("", 11.5f, subInk(), false);
        countTv.setSingleLine(true);
        countTv.setPadding(dp(6), 0, dp(6), 0);
        footer.addView(countTv, lpm(0, WRAP, 1f));
@@ -2663,14 +2863,14 @@ jobs:
 
       private void updateCount() {
        if (countTv == null) return;
-       countTv.setText(t("نمایش " + fd(shown.size()) + " مورد از " + fd(Vault.MAX) + " مورد",
-         "Showing " + shown.size() + " of " + Vault.MAX + " items"));
+       countTv.setText(t("نمایش " + fd(shown.size()) + " مورد از " + fd(Vault.limit(ctx)) + " مورد",
+         "Showing " + shown.size() + " of " + Vault.limit(ctx) + " items"));
       }
 
       private void buildList() {
        listPane = new LinearLayout(ctx);
        listPane.setOrientation(LinearLayout.VERTICAL);
-       listPane.setBackground(rr(panelColor(), 20));
+       listPane.setBackground(rr(panelFill(), 20));
        FrameLayout.LayoutParams fl = new FrameLayout.LayoutParams(MATCH, MATCH);
        fl.setMargins(dp(10), 0, dp(10), dp(4));
        body.addView(listPane, fl);
@@ -2689,7 +2889,7 @@ jobs:
        searchEt.setSingleLine(true);
        searchEt.setHint(t("جستجو در متن‌ها", "Search the texts"));
        searchEt.setTextSize(14);
-       searchEt.setTextColor(0xFF1B1F3B);
+       searchEt.setTextColor(ink());
        searchEt.setHintTextColor(0xFF9AA0B8);
        searchEt.setPadding(dp(10), 0, dp(10), 0);
        searchEt.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
@@ -2820,7 +3020,7 @@ jobs:
         rootV.addView(ico, ip);
         LinearLayout colm = new LinearLayout(ctx);
         colm.setOrientation(LinearLayout.VERTICAL);
-        txt = tv("", 14, 0xFF1B1F3B, false);
+        txt = tv("", 14, ink(), false);
         txt.setSingleLine(true);
         txt.setEllipsize(TextUtils.TruncateAt.END);
         txt.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
@@ -2939,7 +3139,7 @@ jobs:
        card.setBackground(cg);
        card.setPadding(dp(4), dp(4), dp(4), dp(4));
        for (int i = 0; i < labels.length; i++) {
-        TextView it = tv(labels[i], 14, 0xFF1B1F3B, false);
+        TextView it = tv(labels[i], 14, ink(), false);
         it.setPadding(dp(16), dp(12), dp(16), dp(12));
         final int k = i;
         it.setOnClickListener(v -> { closeMenu(); acts[k].run(); });
@@ -2969,6 +3169,7 @@ jobs:
       }
 
       private void goMain() {
+       bgPage = false;
        closeMenu();
        exitKb();
        page = P_MAIN;
@@ -3014,6 +3215,7 @@ jobs:
        closeMenu();
        exitKb();
        page = P_SET;
+       bgPage = false;
        cur = null;
        listPane.setVisibility(View.GONE);
        footer.setVisibility(View.GONE);
@@ -3085,9 +3287,9 @@ jobs:
        sv.setVerticalScrollBarEnabled(false);
        LinearLayout box = new LinearLayout(ctx);
        box.setOrientation(LinearLayout.VERTICAL);
-       box.setBackground(rr(panelColor(), 18));
+       box.setBackground(rr(panelFill(), 18));
        box.setPadding(dp(14), dp(12), dp(14), dp(12));
-       final TextView txt = tv(full, 15, 0xFF1B1F3B, false);
+       final TextView txt = tv(full, 15, ink(), false);
        txt.setLineSpacing(0f, 1.25f);
        txt.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
        box.addView(txt, lpm(MATCH, WRAP, 0));
@@ -3198,7 +3400,7 @@ jobs:
       }
 
       private TextView label(String s) {
-       TextView l = tv(s, 13, 0xFF1B1F3B, true);
+       TextView l = tv(s, 13, ink(), true);
        l.setPadding(dp(2), dp(14), dp(2), dp(6));
        return l;
       }
@@ -3219,7 +3421,7 @@ jobs:
        e.setText(val);
        e.setHint(hint);
        e.setTextSize(14);
-       e.setTextColor(0xFF1B1F3B);
+       e.setTextColor(ink());
        e.setHintTextColor(0xFF9AA0B8);
        e.setGravity(Gravity.CENTER);
        e.setSingleLine(true);
@@ -3239,13 +3441,191 @@ jobs:
        CheckBox c = new CheckBox(ctx);
        c.setText(s);
        c.setTextSize(13);
-       c.setTextColor(0xFF1B1F3B);
+       c.setTextColor(ink());
        Typeface f = fa ? faFont() : null;
        if (f != null) c.setTypeface(f);
        c.setChecked(on);
        c.setButtonTintList(ColorStateList.valueOf(accent));
        c.setPadding(dp(6), dp(4), dp(6), dp(4));
        return c;
+      }
+
+      private void openBgPage() {
+       closeMenu();
+       exitKb();
+       page = P_SET;
+       bgPage = true;
+       cur = null;
+       listPane.setVisibility(View.GONE);
+       footer.setVisibility(View.GONE);
+       detailHolder.removeAllViews();
+       detailHolder.setVisibility(View.VISIBLE);
+       detailHolder.addView(buildBgPage(), new FrameLayout.LayoutParams(MATCH, MATCH));
+       buildHeader();
+      }
+
+      private void addSlider(LinearLayout c, String name, final String key, final int min, final int max, final int def) {
+       c.addView(label(name));
+       final TextView pv = tv(fd(sp.getInt(key, def)) + "%", 12, subInk(), false);
+       SeekBar sb = new SeekBar(ctx);
+       sb.setMax(max - min);
+       sb.setProgress(clamp(sp.getInt(key, def), min, max) - min);
+       sb.setProgressTintList(ColorStateList.valueOf(accent));
+       sb.setThumbTintList(ColorStateList.valueOf(accent));
+       sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        @Override
+        public void onProgressChanged(SeekBar s, int p, boolean user) {
+         pv.setText(fd(min + p) + "%");
+         if (user) { sp.edit().putInt(key, min + p).apply(); applyFrame(); }
+        }
+        @Override public void onStartTrackingTouch(SeekBar s) { }
+        @Override public void onStopTrackingTouch(SeekBar s) { }
+       });
+       c.addView(sb, lpm(MATCH, WRAP, 0));
+       c.addView(pv, lpm(WRAP, WRAP, 0));
+      }
+
+      private void pickBgImage() {
+       try {
+        android.content.Intent i = new android.content.Intent(ctx, VaultImgActivity.class);
+        i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+        ctx.startActivity(i);
+        dismiss(true);
+       } catch (Throwable e) {
+        Toast.makeText(ctx, t("باز کردن گالری ممکن نشد", "Could not open the gallery"), Toast.LENGTH_SHORT).show();
+       }
+      }
+
+      private View buildBgPage() {
+       ScrollView sv = new ScrollView(ctx);
+       sv.setVerticalScrollBarEnabled(false);
+       final LinearLayout c = new LinearLayout(ctx);
+       c.setOrientation(LinearLayout.VERTICAL);
+       c.setPadding(dp(14), dp(2), dp(14), dp(16));
+       sv.addView(c, new FrameLayout.LayoutParams(MATCH, WRAP));
+
+       c.addView(label(t("رنگ پس‌زمینه کادر", "Frame colour")));
+       HorizontalScrollView hs = new HorizontalScrollView(ctx);
+       hs.setHorizontalScrollBarEnabled(false);
+       LinearLayout sr = new LinearLayout(ctx);
+       sr.setOrientation(LinearLayout.HORIZONTAL);
+       sr.setGravity(Gravity.CENTER_VERTICAL);
+       int[] cols = {0xFFFFFFFF, 0xFFF5F7FC, 0xFFFFF4D6, 0xFFE3F2FD, 0xFFE0F7EF, 0xFFFCE4EC, 0xFFEDE7F6,
+         0xFFB0BEC5, 0xFF5C6BC0, 0xFF263238, 0xFF1A1B2E, 0xFF000000};
+       for (final int col : cols) {
+        View sw1 = new View(ctx);
+        GradientDrawable g = oval(col);
+        g.setStroke(dp(2), 0x88888888);
+        sw1.setBackground(g);
+        sw1.setOnClickListener(v -> {
+         sp.edit().putInt("vault_bgc", col).apply();
+         applyFrame();
+         openBgPage();
+        });
+        LinearLayout.LayoutParams p = lpm(dp(40), dp(40), 0);
+        p.setMargins(dp(5), dp(6), dp(5), dp(6));
+        sr.addView(sw1, p);
+       }
+       hs.addView(sr);
+       c.addView(hs, lpm(MATCH, WRAP, 0));
+
+       c.addView(label(t("انتخاب دلخواه (رنگ و شفافیت)", "Custom colour (with transparency)")));
+       final EditText et = new EditText(ctx);
+       final ColorPicker cp = new ColorPicker(ctx);
+       cp.setColor(bgColor());
+       cp.setListener(col -> {
+        sp.edit().putInt("vault_bgc", col).apply();
+        applyFrame();
+        et.setText(String.format("#%08X", col));
+       });
+       LinearLayout.LayoutParams cpl = lpm(MATCH, WRAP, 0);
+       cpl.topMargin = dp(8);
+       c.addView(cp, cpl);
+
+       LinearLayout hr = new LinearLayout(ctx);
+       hr.setOrientation(LinearLayout.HORIZONTAL);
+       hr.setGravity(Gravity.CENTER_VERTICAL);
+       et.setText(String.format("#%08X", bgColor()));
+       et.setSingleLine(true);
+       et.setTextSize(13);
+       et.setTextColor(ink());
+       et.setBackground(rr(0x14808080, 12));
+       et.setPadding(dp(12), dp(8), dp(12), dp(8));
+       LinearLayout.LayoutParams el = lpm(0, WRAP, 1f);
+       el.setMargins(0, dp(8), dp(6), dp(4));
+       hr.addView(et, el);
+       hr.addView(pill(t("اعمال", "Apply"), true, v -> {
+        try {
+         int col = Color.parseColor(et.getText().toString().trim());
+         sp.edit().putInt("vault_bgc", col).apply();
+         applyFrame();
+         openBgPage();
+        } catch (Throwable ex) {
+         Toast.makeText(ctx, t("کد رنگ نامعتبر است", "Invalid colour code"), Toast.LENGTH_SHORT).show();
+        }
+       }));
+       c.addView(hr, lpm(MATCH, WRAP, 0));
+
+       c.addView(label(t("شفافیت رنگ", "Colour transparency")));
+       int a0 = Color.alpha(bgColor()) * 100 / 255;
+       final TextView av = tv(fd(clamp(a0, 5, 100)) + "%", 12, subInk(), false);
+       SeekBar asb = new SeekBar(ctx);
+       asb.setMax(95);
+       asb.setProgress(clamp(a0, 5, 100) - 5);
+       asb.setProgressTintList(ColorStateList.valueOf(accent));
+       asb.setThumbTintList(ColorStateList.valueOf(accent));
+       asb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        @Override
+        public void onProgressChanged(SeekBar s, int p, boolean user) {
+         av.setText(fd(5 + p) + "%");
+         if (!user) return;
+         int col = (bgColor() & 0x00FFFFFF) | ((5 + p) * 255 / 100 << 24);
+         sp.edit().putInt("vault_bgc", col).apply();
+         applyFrame();
+        }
+        @Override public void onStartTrackingTouch(SeekBar s) { }
+        @Override public void onStopTrackingTouch(SeekBar s) { }
+       });
+       c.addView(asb, lpm(MATCH, WRAP, 0));
+       c.addView(av, lpm(WRAP, WRAP, 0));
+
+       c.addView(label(t("عکس پس‌زمینه", "Background picture")));
+       boolean imgOn = bgBitmap() != null;
+       LinearLayout ir = new LinearLayout(ctx);
+       ir.setOrientation(LinearLayout.HORIZONTAL);
+       ir.addView(pill(imgOn ? t("تغییر عکس", "Change picture") : t("انتخاب عکس از گالری", "Pick from gallery"), true, v -> pickBgImage()));
+       if (imgOn) {
+        ir.addView(pill(t("حذف عکس", "Remove picture"), false, v -> {
+         sp.edit().putBoolean("vault_bgImg", false).apply();
+         try { new java.io.File(ctx.getFilesDir(), "vault_bg.jpg").delete(); } catch (Throwable ex) { }
+         bgBmp = null;
+         bgBmpTried = false;
+         applyFrame();
+         openBgPage();
+        }));
+       }
+       c.addView(ir, lpm(MATCH, WRAP, 0));
+       if (imgOn) {
+        addSlider(c, t("مات", "Fade"), "vault_bgFade", 0, 98, 0);
+        addSlider(c, t("اندازه", "Zoom"), "vault_bgZoom", 100, 300, 100);
+        addSlider(c, t("جابه‌جایی افقی", "Horizontal"), "vault_bgPx", 0, 100, 50);
+        addSlider(c, t("جابه‌جایی عمودی", "Vertical"), "vault_bgPy", 0, 100, 50);
+       }
+
+       LinearLayout rr1 = new LinearLayout(ctx);
+       rr1.setOrientation(LinearLayout.HORIZONTAL);
+       LinearLayout.LayoutParams rl1 = lpm(MATCH, WRAP, 0);
+       rl1.topMargin = dp(14);
+       rr1.addView(pill(t("بازنشانی به پیش‌فرض", "Reset to default"), false, v -> {
+        sp.edit().remove("vault_bgc").putBoolean("vault_bgImg", false).apply();
+        try { new java.io.File(ctx.getFilesDir(), "vault_bg.jpg").delete(); } catch (Throwable ex) { }
+        bgBmp = null;
+        bgBmpTried = false;
+        applyFrame();
+        openBgPage();
+       }));
+       c.addView(rr1, rl1);
+       return sv;
       }
 
       private View buildSettings() {
@@ -3329,7 +3709,7 @@ jobs:
         final int idx = i;
         View sw1 = new View(ctx);
         GradientDrawable g = oval(ACC[i]);
-        if (i == curC) g.setStroke(dp(3), 0xFF1B1F3B);
+        if (i == curC) g.setStroke(dp(3), ink());
         sw1.setBackground(g);
         sw1.setOnClickListener(v -> {
          sp.edit().putInt("vault_color", idx).apply();
@@ -3345,7 +3725,7 @@ jobs:
        c.addView(cr, lpm(MATCH, WRAP, 0));
 
        c.addView(label(t("شفافیت کادر", "Frame transparency")));
-       final TextView pv = tv(fd(alphaPct) + "%", 12, 0xFF6B7190, false);
+       final TextView pv = tv(fd(alphaPct) + "%", 12, subInk(), false);
        SeekBar sb = new SeekBar(ctx);
        sb.setMax(70);
        sb.setProgress(alphaPct - 30);
@@ -3356,16 +3736,39 @@ jobs:
         public void onProgressChanged(SeekBar s, int p, boolean user) {
          alphaPct = 30 + p;
          pv.setText(fd(alphaPct) + "%");
-         GradientDrawable bg = rr(cardColor(), 26);
-         bg.setStroke(dp(1), 0x22000000);
-         root.setBackground(bg);
-         listPane.setBackground(rr(panelColor(), 20));
+         applyFrame();
         }
         @Override public void onStartTrackingTouch(SeekBar s) { }
         @Override public void onStopTrackingTouch(SeekBar s) { sp.edit().putInt("vault_alpha", alphaPct).apply(); }
        });
        c.addView(sb, lpm(MATCH, WRAP, 0));
        c.addView(pv, lpm(WRAP, WRAP, 0));
+
+       c.addView(label(t("پس‌زمینه", "Background")));
+       LinearLayout bgr = new LinearLayout(ctx);
+       bgr.setOrientation(LinearLayout.HORIZONTAL);
+       bgr.addView(pill(t("🎨 رنگ، شفافیت و عکس کادر", "🎨 Frame colour, transparency and picture"), true, v -> openBgPage()));
+       c.addView(bgr, lpm(MATCH, WRAP, 0));
+
+       c.addView(label(t("حداکثر تعداد متن‌های ذخیره‌شده", "Maximum saved items")));
+       final TextView mv = tv(fd(Vault.limit(ctx)), 12, subInk(), false);
+       SeekBar ms = new SeekBar(ctx);
+       ms.setMax(15);
+       ms.setProgress((Vault.limit(ctx) - 500) / 100);
+       ms.setProgressTintList(ColorStateList.valueOf(accent));
+       ms.setThumbTintList(ColorStateList.valueOf(accent));
+       ms.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        @Override
+        public void onProgressChanged(SeekBar s, int p, boolean user) { mv.setText(fd(500 + p * 100)); }
+        @Override public void onStartTrackingTouch(SeekBar s) { }
+        @Override
+        public void onStopTrackingTouch(SeekBar s) {
+         sp.edit().putInt("vault_max", 500 + s.getProgress() * 100).apply();
+         updateCount();
+        }
+       });
+       c.addView(ms, lpm(MATCH, WRAP, 0));
+       c.addView(mv, lpm(WRAP, WRAP, 0));
 
        c.addView(label(t("ذخیره خودکار", "Automatic saving")));
        CheckBox lpc = checkRow(t("ذخیره متن با لمس طولانی ۱ ثانیه‌ای در برنامه‌ها (نیاز به سرویس دسترسی‌پذیری)",
@@ -3397,6 +3800,69 @@ jobs:
        cl.topMargin = dp(18);
        c.addView(clr, cl);
        return sv;
+      }
+     }
+     EOF
+
+     cat > app/src/main/java/com/mylauncher/VaultImgActivity.java <<'EOF'
+     package com.mylauncher;
+
+     import android.app.Activity;
+     import android.content.Intent;
+     import android.graphics.Bitmap;
+     import android.graphics.BitmapFactory;
+     import android.net.Uri;
+     import android.os.Bundle;
+     import android.widget.Toast;
+     import java.io.File;
+     import java.io.FileOutputStream;
+     import java.io.InputStream;
+
+     public class VaultImgActivity extends Activity {
+      private static final int REQ = 91;
+
+      @Override
+      protected void onCreate(Bundle b) {
+       super.onCreate(b);
+       try {
+        Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+        i.setType("image/*");
+        startActivityForResult(Intent.createChooser(i, "Image"), REQ);
+       } catch (Throwable e) {
+        finish();
+       }
+      }
+
+      @Override
+      protected void onActivityResult(int rc, int res, Intent data) {
+       super.onActivityResult(rc, res, data);
+       if (rc == REQ && res == RESULT_OK && data != null && data.getData() != null) {
+        try {
+         Uri u = data.getData();
+         BitmapFactory.Options o = new BitmapFactory.Options();
+         o.inJustDecodeBounds = true;
+         InputStream in1 = getContentResolver().openInputStream(u);
+         BitmapFactory.decodeStream(in1, null, o);
+         in1.close();
+         int ss = 1;
+         while (Math.max(o.outWidth, o.outHeight) / ss > 1600) ss *= 2;
+         BitmapFactory.Options o2 = new BitmapFactory.Options();
+         o2.inSampleSize = ss;
+         InputStream in2 = getContentResolver().openInputStream(u);
+         Bitmap src = BitmapFactory.decodeStream(in2, null, o2);
+         in2.close();
+         if (src == null) throw new Exception("decode");
+         FileOutputStream fo = new FileOutputStream(new File(getFilesDir(), "vault_bg.jpg"));
+         src.compress(Bitmap.CompressFormat.JPEG, 92, fo);
+         fo.close();
+         getSharedPreferences("l", 0).edit().putBoolean("vault_bgImg", true).remove("vault_bgZoom")
+           .remove("vault_bgPx").remove("vault_bgPy").remove("vault_bgFade").apply();
+         Toast.makeText(this, "OK", Toast.LENGTH_SHORT).show();
+        } catch (Throwable e) {
+         Toast.makeText(this, "Could not read the image", Toast.LENGTH_SHORT).show();
+        }
+       }
+       finish();
       }
      }
      EOF
